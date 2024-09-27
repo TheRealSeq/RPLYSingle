@@ -179,7 +179,6 @@
         }
         const data = new Uint8Array(d);
         const pTime = Date.now()-recordStartTime;
-        console.log(pTime);
         const crP = new Packet3(d, pTime, t);
         packets.push(crP);
       })
@@ -200,14 +199,10 @@
       //time4; //FUCK YOU PUPPY 2
       //type; //FUCK YOU PUPPY 3
  
-      constructor(data, time2, type){   //time is relative time passed somce rec start
-        this.data = data; //Uint8Array of the ws' input
-        this.time = time2; //time since record start in millis
-        this.tlmeButNotCalledTlmeIg = time2;
-        this.tlme = this.time;
+      constructor(data, time, type){   //time is relative time passed somce rec start
+        this.data = data; //(Uint8Array of the ws' input) JETZT: volles Websocketonmessageantwortobjekt, somit liegt die originale data in data.data (dann halt mit new Uint8Array aber jetzt nd)
+        this.time = time; //time since record start in millis
         this.type = type; //what func was it recorded form? (1 for onMessage1, 2 for onMessage2)
-        console.log("constructor vals: (time | test1 | test2)");
-        console.log(this.time + " | " + this.tlmeButNotCalledTlmeIg + " | " + this.tlme);
       }
 
       peekByte(){
@@ -226,17 +221,10 @@
       const replayStartTime = Date.now();
       console.log("replay, " + packets.length);
       while(packets.length>0){
-        const packet = packets.shift(); //grab first packet
-        console.log("packet time: " + packet.time);
-        console.log("test 1: " + packet.tlmeButNotCalledTlmeIg);
-        console.log("test 2: " + packet.tlme);
-
-        console.log("packet data:");
-        console.log(packet.data);
+        const packet = packets.shift(); //grab first packet);
         const delayDur = packet.time - (Date.now()-replayStartTime);
         console.log("sleep for: " + delayDur);
         if(delayDur>0) await sleep(delayDur);
-        
         if(packet.data && packet.peekByte()!=C.socketReady){ //I want to kill myself :(
           switch(packet.type){
             case 1:
@@ -258,13 +246,6 @@
       }
   });
 
-  document.addEventListener('keydown', function(event) {
-    if (event.key === "k") {
-      console.log("packet time: " + packet.time);
-      console.log("test 1: " + packet.tlmeButNotCalledTlmeIg);
-      console.log("test 2: " + packet.tlme);
-    }
-});
 
     
   })();
