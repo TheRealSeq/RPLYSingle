@@ -154,6 +154,7 @@
       let onMessage1Mod = onMessageMatch[1].originalReplaceAll("syncMe","nononono");
       onMessage1Mod = onMessage1Mod.originalReplaceAll("hitMe","nononono");
       onMessage1Mod = onMessage1Mod.originalReplaceAll("hitMeHardBoiled","nononono");
+      console.log("meid: " + H.meid);
       onMessage1Mod = onMessage1Mod.originalReplaceAll(H.meid, "-1");
 
 
@@ -207,6 +208,7 @@
       inj(beforeMeCheckRespawnMatch[0], beforeMeCheckRespawnMatch[1] + "(" + beforeMeCheckRespawnMatch[2] + "&&!window.bReplaying)?(console.log('fuck you hh '+window.bReplaying),");
     }
 
+
     function injExternal(js, inj){
       const onMessage1Match = js.match(H.ws+"\\.onmessage=function\\(([a-zA-Z$_,]+)\\)\\{");
       const onMessage2Match = js.match("("+H.ws+"\\.onmessage=function\\(([a-zA-Z$_,]+)\\)\\{)switch");
@@ -236,9 +238,10 @@
       //type; //FUCK YOU PUPPY 3
  
       constructor(data, time, type){   //time is relative time passed somce rec start
-        this.data = data; //(Uint8Array of the ws' input) JETZT: volles Websocketonmessageantwortobjekt, somit liegt die originale data in data.data (dann halt mit new Uint8Array aber jetzt nd)
+        //this.data = data; //(Uint8Array of the ws' input) JETZT: volles Websocketonmessageantwortobjekt, somit liegt die originale data in data.data (dann halt mit new Uint8Array aber jetzt nd)
         this.time = time; //time since record start in millis
         this.type = type; //what func was it recorded form? (1 for onMessage1, 2 for onMessage2)
+        this.data = SaveSystem.fakeWSResponseStructureFromBuffer(data.data);
       }
 
       peekByte(){
@@ -354,6 +357,12 @@
     }
   },
 
+  fakeWSResponseStructureFromBuffer: function(buff){
+    return{
+      data: buff 
+    }
+  },
+
     savePacketsToFile: function(){
       const buffer = new ArrayBuffer(this.calcSaveLength());
       const v = new DataView(buffer);
@@ -410,7 +419,10 @@
   };
 
 
-
+  function releasePackets(){
+    packets = [];
+    console.log("packets released.");
+  }
 
 
   
