@@ -136,7 +136,7 @@
       //FUCK YOU PUPPY
       //I love you puppy
 
-      const onMessage2Match = js.match(H.ws+"\\.onmessage=(function\\(([a-zA-Z$_,]+)\\)\\{switch.+?(?=requestGameOptions)requestGameOptions:FO\\(\\)\\}\\})");
+      const onMessage2Match = js.match(H.ws+"\\.onmessage=(function\\(([a-zA-Z$_,]+)\\)\\{switch.+?(?=requestGameOptions)requestGameOptions:([a-zA-Z$_,]+)\\(\\)\\}\\})");
 
 
       console.log(onMessageMatch[1]);
@@ -178,7 +178,9 @@
           recordStartTime = Date.now();
         }
         const data = new Uint8Array(d);
-        const crP = new Packet(d, Date.now()-recordStartTime, t);
+        const pTime = Date.now()-recordStartTime;
+        console.log(pTime);
+        const crP = new Packet3(d, pTime, t);
         packets.push(crP);
       })
     }
@@ -193,25 +195,19 @@
     }
 
     //class declarations
-    class Packet{
-      data;
-      time4;
-      type;
-
+    class Packet3{
+      //data; //FUCK YOU PUPPY
+      //time4; //FUCK YOU PUPPY 2
+      //type; //FUCK YOU PUPPY 3
+ 
       constructor(data, time2, type){   //time is relative time passed somce rec start
         this.data = data; //Uint8Array of the ws' input
-        this.time4 = time2; //time since record start in millis
+        this.time = time2; //time since record start in millis
         this.type = type; //what func was it recorded form? (1 for onMessage1, 2 for onMessage2)
       }
 
       peekByte(){
         return new Uint8Array(this.data.data)[0];
-      }
-      getTime(){
-        return this.time4;
-      }
-      getData(){
-        return this.data;
       }
     }
 
@@ -222,12 +218,15 @@
   
 
     async function rePlayPackets(){ //OHhohoho WE NEED THIS TO BE ASYNC BECAUZSE FUCK YOU SHIT ASS LANUGAGE YOU FUCKING SHITHOLE OF NOTHE FUCKING KILL YOURSELF END IT ALREADY NMOONE WANTS YOU ANYMORE FUCK YOU PUPPY!
+      console.log(packets[0].time);
       const replayStartTime = Date.now();
       console.log("replay, " + packets.length);
       while(packets.length>0){
         const packet = packets[0]; //grab first packet
-        const delayDur = packet.getTime() - (Date.now()-replayStartTime);
-        console.log(packet.getTime());
+        console.log("packet time: " + packet.time);
+        console.log("packet data:");
+        console.log(packet.data);
+        const delayDur = packet.time - (Date.now()-replayStartTime);
         console.log("sleep for: " + delayDur);
         if(delayDur>0) await sleep(delayDur);
         
@@ -235,11 +234,11 @@
           switch(packet.type){
             case 1:
               console.log("on1");
-              ss.onMessage(packet.getData()); 
+              ss.onMessage(packet.data); 
             break;
             case 2: 
               console.log("on2");
-              ss.onMessage2(packet.getData()); 
+              ss.onMessage2(packet.data); 
             break;
           }
           packets.shift();
