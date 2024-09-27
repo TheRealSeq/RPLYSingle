@@ -203,7 +203,11 @@
       constructor(data, time2, type){   //time is relative time passed somce rec start
         this.data = data; //Uint8Array of the ws' input
         this.time = time2; //time since record start in millis
+        this.tlmeButNotCalledTlmeIg = time2;
+        this.tlme = this.time;
         this.type = type; //what func was it recorded form? (1 for onMessage1, 2 for onMessage2)
+        console.log("constructor vals: (time | test1 | test2)");
+        console.log(this.time + " | " + this.tlmeButNotCalledTlmeIg + " | " + this.tlme);
       }
 
       peekByte(){
@@ -222,15 +226,18 @@
       const replayStartTime = Date.now();
       console.log("replay, " + packets.length);
       while(packets.length>0){
-        const packet = packets[0]; //grab first packet
+        const packet = packets.shift(); //grab first packet
         console.log("packet time: " + packet.time);
+        console.log("test 1: " + packet.tlmeButNotCalledTlmeIg);
+        console.log("test 2: " + packet.tlme);
+
         console.log("packet data:");
         console.log(packet.data);
         const delayDur = packet.time - (Date.now()-replayStartTime);
         console.log("sleep for: " + delayDur);
         if(delayDur>0) await sleep(delayDur);
         
-        if(packet.data && packet.peekByte()!=C.socketReady){
+        if(packet.data && packet.peekByte()!=C.socketReady){ //I want to kill myself :(
           switch(packet.type){
             case 1:
               console.log("on1");
@@ -241,7 +248,6 @@
               ss.onMessage2(packet.data); 
             break;
           }
-          packets.shift();
         }
       }
     }
@@ -251,6 +257,14 @@
         rePlayPackets();
       }
   });
+
+  document.addEventListener('keydown', function(event) {
+    if (event.key === "k") {
+      console.log("packet time: " + packet.time);
+      console.log("test 1: " + packet.tlmeButNotCalledTlmeIg);
+      console.log("test 2: " + packet.tlme);
+    }
+});
 
     
   })();
