@@ -21,9 +21,14 @@
     LM();
     function LM(){ //so I can collapse this shit. Fuck you puppy!!!!!!1111
     let originalReplace = String.prototype.replace;
+    let originalReplaceAll = String.prototype.replaceAll;
 
     String.prototype.originalReplace = function() {
       return originalReplace.apply(this, arguments);
+    };
+
+    String.prototype.originalReplaceAll = function() {
+      return originalReplaceAll.apply(this, arguments);
     };
 
 
@@ -146,6 +151,12 @@
       console.log(onMessageMatch[1]);
       console.log(onMessage2Match[1]);
 
+      let onMessage1Mod = onMessageMatch[1].originalReplaceAll("syncMe","nononono");
+      onMessage1Mod = onMessage1Mod.originalReplaceAll("hitMe","nononono");
+      onMessage1Mod = onMessage1Mod.originalReplaceAll("hitMeHardBoiled","nononono");
+      onMessage1Mod = onMessage1Mod.originalReplaceAll(H.meid, "-1");
+
+
       H.onMessage = onMessageMatch[1];
       H.onMessage2 = onMessage2Match[1]
 
@@ -190,7 +201,8 @@
 
     function injPreGrab(js, inj){
       //block myplayer respawn
-      const beforeMeCheckRespawnMatch = js.match(/(\.respawn\([a-zA-Z$_,]+,[a-zA-Z$_,]+,[a-zA-Z$_,]+\),)([a-zA-Z$_,]+==[a-zA-Z$_,]+)\?\(/);
+      const beforeMeCheckRespawnMatch = js.match(/(\.respawn\([a-zA-Z$_,]+,[a-zA-Z$_,]+,[a-zA-Z$_,]+\),)([a-zA-Z$_,]+==([a-zA-Z$_,]+))\?\(/);
+      H.meid = beforeMeCheckRespawnMatch[3];
       console.log(beforeMeCheckRespawnMatch);
       inj(beforeMeCheckRespawnMatch[0], beforeMeCheckRespawnMatch[1] + "(" + beforeMeCheckRespawnMatch[2] + "&&!window.bReplaying)?(console.log('fuck you hh '+window.bReplaying),");
     }
@@ -277,14 +289,13 @@
 
 
     init: function(){
-      this.inputElem = document.createElement('RPLYFileInput');
+      this.inputElem = document.createElement('input');
       this.inputElem.type = 'file';
-      this.inputElem.style.display = 'block'; // Unsichtbar machen
+      this.inputElem.style.display = 'none'; // Unsichtbar machen
       document.body.appendChild(this.inputElem);
       this.inputElem.addEventListener('change', this.handleFileUpload, false);
       console.log("elem should now exist..");
       this.bIsInit = true;
-      this.triggerFileUpload();
     },
 
     triggerFileUpload: function() {
@@ -303,7 +314,7 @@
       const reader = new FileReader();
       reader.onload = function(e) {
           const arrayBuffer = e.target.result;
-          parseFromData(arrayBuffer);
+          SaveSystem.parseFromData(arrayBuffer);
       };
 
       reader.readAsArrayBuffer(file);
@@ -411,6 +422,11 @@
 
       async function rePlayPackets() {
         toggleObserverMode(true);
+        Object.defineProperty(extern, 'observingGame', {
+          get: function() {
+            return bIsObserving;
+          }
+        });
         console.log("replay func called at iReplayPacketIdx " + iReplayPacketIdx + " and iReplayRelativeTime "+ iReplayRelativeTime +", bReplaying is " + bReplaying + ".");
         window.bReplaying = true;
         iReplayRelativeTime = packets[iReplayPacketIdx].time; 
