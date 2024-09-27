@@ -282,6 +282,7 @@
 
 
   const SaveSystem = {
+    //TODO: fix this!
     //----------------------------------------------------------------------------------------------------------------------------------
     SAVE_VERSION: 1,
     bIsInit: false,
@@ -323,7 +324,10 @@
       const reader = new FileReader();
       reader.onload = function(e) {
           const arrayBuffer = e.target.result;
-          packets = packets.concat(SaveSystem.parseFromData(arrayBuffer));
+          PacketStreamer.clear();
+          SaveSystem.parseFromData(arrayBuffer).forEach(pack => {
+              PacketStreamer.addPacket(pack);
+          });
       };
 
       reader.readAsArrayBuffer(file);
@@ -369,6 +373,10 @@
   },
 
     savePacketsToFile: function(){
+      packets = [];
+      for(let i = 0; i<PacketStreamer.length; i++){
+        packets.push(PacketStreamer.getPacket(i));
+      }
       const uint8Array = this.compressPacketsToByteArray(packets);
 
       function downloadBlob(data, fileName, mimeType) {
@@ -466,7 +474,7 @@
     },
 
   loadChunk: function(index){
-    console.log("trying to load chunk " + index + ", max length " + this.chunks.length);
+    console.log("trying to load chunk " + index + ", max length " + (this.chunks.length-1));
     const uint8arr =  pako.inflate(this.chunks[index]);
     return SaveSystem.parseFromData(uint8arr.buffer);
   }
@@ -484,6 +492,13 @@
       this.tempPacketStream.push(pack);
       this.length++;
       this.releaseAll();
+    },
+
+    clear: function(){
+      this.currentChunkIdx = 0;
+      this.length = 0;
+      MemoryManager.chunks = [];
+      this.tempPacketStream= [];
     },
 
     loadChunk: function(indx){
