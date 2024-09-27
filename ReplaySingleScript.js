@@ -197,7 +197,9 @@
         const data = new Uint8Array(d);
         const pTime = Date.now()-recordStartTime;
         const crP = new Packet3(d, pTime, t);
-        packets.push(crP);
+        //packets.push(crP);
+        PacketStreamer.addPacket(crP);
+        return;
         if(packets.length>=1000){
           console.log("releasing packets to chunk compressor...");
           MemoryManager.releaseToChunk();
@@ -367,7 +369,7 @@
   },
 
     savePacketsToFile: function(){
-      const uint8Array = this.compressPacketsToByteArray();
+      const uint8Array = this.compressPacketsToByteArray(packets);
 
       function downloadBlob(data, fileName, mimeType) {
         const blob = new Blob([data], { type: mimeType });
@@ -447,8 +449,8 @@
       return compressed;
     },
 
-    releaseToChunk: function(){
-      this.chunks.push(this.getAndReleaseCompressed());
+    releaseToChunk: function(packs){
+      this.chunks.push(this.getAndReleaseCompressed(packs));
     },
 
     //aka crashChromeTab()
@@ -464,8 +466,9 @@
     },
 
   loadChunk: function(index){
+    console.log("trying to load chunk " + index + ", max length " + this.chunks.length);
     const uint8arr =  pako.inflate(this.chunks[index]);
-    SaveSystem.parseFromData(uint8arr.buffer);
+    return SaveSystem.parseFromData(uint8arr.buffer);
   }
 
   };
@@ -484,18 +487,20 @@
     },
 
     loadChunk: function(indx){
+      if(Math.floor(this.length/this.chunkSize)>=MemoryManager.chunks.length) this.release();
       this.tempPacketStream = MemoryManager.loadChunk(indx);
       this.currentChunkIdx = indx;
     },
 
     releaseAll: function(){
-       while(this.tempPacketStream.length>this.chunkSize){
+       while(this.tempPacketStream.length>=this.chunkSize){
         this.release();
       }
     },
 
     release: function(){
-      getAndReleaseCompressed(this.tempPacketStream.splice(0, this.tempPacketStream.length>this.chunkSize? this.chunkSize : this.tempPacketStream.length));
+      MemoryManager.releaseToChunk(this.tempPacketStream.splice(0, this.tempPacketStream.length>this.chunkSize? this.chunkSize : this.tempPacketStream.length));
+      this.currentChunkIdx= Math.floor(this.length/this.chunkSize);
     },
 
     getPacket: function(index){
@@ -503,7 +508,10 @@
         index%=this.length; //troll
       }
       const location = Math.floor(index/this.chunkSize);
-      if(this.currentChunkIdx!=location) this.loadChunk(location);
+      if(this.currentChunkIdx!=location){
+        this.loadChunk(location);
+        console.log("moving playback to chunk " + location );
+      } 
       return this.tempPacketStream[index%this.chunkSize];
     }
 
@@ -528,25 +536,25 @@
         });
         console.log("replay func called at iReplayPacketIdx " + iReplayPacketIdx + " and iReplayRelativeTime "+ iReplayRelativeTime +", bReplaying is " + bReplaying + ".");
         window.bReplaying = true;
-        console.log(packets.length+ " packets.");
-        iReplayRelativeTime = packets[iReplayPacketIdx].time; 
+        console.log(PacketStreamer.length+ " packets.");
+        iReplayRelativeTime = PacketStreamer.getPacket(iReplayPacketIdx).time; 
         console.log("updated iReplayRelativeTime from iReplayPacketIdx: " + iReplayRelativeTime);
 
-        while(packets.length>iReplayPacketIdx && window.bReplaying){
+        while(PacketStreamer.length>iReplayPacketIdx && window.bReplaying){
           const packet = //packets.shift(); //grab first packet);
-          packets[iReplayPacketIdx++];
+          PacketStreamer.getPacket(iReplayPacketIdx++);
           const delayDur = packet.time - iReplayRelativeTime;
-          console.log("sleep for: " + delayDur);
+          //console.log("sleep for: " + delayDur);
           if(delayDur>0) await sleep(delayDur);
           if(packet.data &&packet.peekByte()!=C.syncMe &&packet.peekByte()!=C.hitMe  && !bannedCommCodes.includes(packet.peekByte())){ //I want to kill myself :(
             //yes I know that that check up there ^^^^^^^^^^^^ doesn't account for any packet after the first one, but eh...
             switch(packet.type){
               case 1:
-                console.log("on1");
+                //console.log("on1");
                 ss.onMessage(packet.data); 
               break;
               case 2: 
-                console.log("on2");
+                //console.log("on2");
                 ss.onMessage2(packet.data); 
               break;
             }
