@@ -10,6 +10,7 @@
   // @run-at       document-start
   // @icon         https://github.com/onlypuppy7/LibertyMutualShellShockers/blob/main/scripticon.jpg?raw=true
   // @require      https://cdn.jsdelivr.net/npm/babylonjs@7.15.0/babylon.min.js
+  // @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js
   // ==/UserScript==
 
 
@@ -197,6 +198,10 @@
         const pTime = Date.now()-recordStartTime;
         const crP = new Packet3(d, pTime, t);
         packets.push(crP);
+        if(packets.length>=1000){
+          console.log("releasing packets to chunk compressor...");
+          MemoryManager.releaseToChunk();
+        }
       })
     }
 
@@ -278,7 +283,6 @@
     //----------------------------------------------------------------------------------------------------------------------------------
     SAVE_VERSION: 1,
     bIsInit: false,
-
     //----------------------------------------------------------------------------------------------------------------------------------
     /*
     file ver: Uint8 (1 byte)
@@ -317,7 +321,7 @@
       const reader = new FileReader();
       reader.onload = function(e) {
           const arrayBuffer = e.target.result;
-          SaveSystem.parseFromData(arrayBuffer);
+          packets = packets.concat(SaveSystem.parseFromData(arrayBuffer));
       };
 
       reader.readAsArrayBuffer(file);
@@ -347,8 +351,7 @@
       const pack = new Packet3(this.fakeWSResponseStructure(arr), rTR, type);
       newPacks.push(pack);
     }
-    packets = newPacks;
-
+    return newPacks;
   },
 
   fakeWSResponseStructure: function(uint8arr){
@@ -364,28 +367,7 @@
   },
 
     savePacketsToFile: function(){
-      const buffer = new ArrayBuffer(this.calcSaveLength());
-      const v = new DataView(buffer);
-      let offs = 0;
-
-      v.setUint8(offs,this.SAVE_VERSION);
-      offs++;
-      v.setUint32(offs, packets.length);
-      offs+=4;
-      packets.forEach(pack => {
-        v.setUint8(offs, pack.type);
-        offs++;
-        v.setUint32(offs, pack.time);
-        offs+=4;  
-        v.setUint16(offs, pack.getDataAsByteArray().length);
-        offs+=2;
-        pack.getDataAsByteArray().forEach(byTe => {
-          v.setUint8(offs, byTe);
-          offs++;
-        });
-      });
-
-      const uint8Array = new Uint8Array(buffer);
+      const uint8Array = this.compressPacketsToByteArray();
 
       function downloadBlob(data, fileName, mimeType) {
         const blob = new Blob([data], { type: mimeType });
@@ -401,16 +383,41 @@
       downloadBlob(uint8Array, 'data.bin', 'application/octet-stream');
     },
 
+    compressPacketsToByteArray: function(packs){
+      const buffer = new ArrayBuffer(this.calcSaveLength(packs));
+      const v = new DataView(buffer);
+      let offs = 0;
+
+      v.setUint8(offs,this.SAVE_VERSION);
+      offs++;
+      v.setUint32(offs, packs.length);
+      offs+=4;
+      packs.forEach(pack => {
+        v.setUint8(offs, pack.type);
+        offs++;
+        v.setUint32(offs, pack.time);
+        offs+=4;  
+        v.setUint16(offs, pack.getDataAsByteArray().length);
+        offs+=2;
+        pack.getDataAsByteArray().forEach(byTe => {
+          v.setUint8(offs, byTe);
+          offs++;
+        });
+      });
+
+      return new Uint8Array(buffer);
+    },
 
 
-    calcSaveLength: function(){ //return the save length in bytes
+
+    calcSaveLength: function(packs){ //return the save length in bytes
       let num = 1; //file ver
       num+=4; //num packs
-      for(let i = 0; i<packets.length; i++){
+      for(let i = 0; i<packs.length; i++){
         num++; //type
         num+=4; //time received
         num+=2; //data length
-        num+=packets[i].getDataAsByteArray().length; //data slots
+        num+=packs[i].getDataAsByteArray().length; //data slots
       }
 
       return num;
@@ -419,9 +426,89 @@
   };
 
 
-  function releasePackets(){
-    packets = [];
+  function releasePackets(packs){
+    packs.splice(0, packs.length);
     console.log("packets released.");
+  }
+
+
+//-----------------------------------------------------------------------------------------------------------------------------------------
+
+  const MemoryManager={
+    chunks: [],
+
+    getAndReleaseCompressed: function(packs){
+      const uint8arr = SaveSystem.compressPacketsToByteArray(packs);
+      const buff = uint8arr.buffer;
+      releasePackets(packs);
+      console.log("compressor: " + uint8arr.length + " bytes pre-compress");
+      const compressed = pako.deflate(buff);
+      console.log("compressor: " + compressed.length + " bytes post-compress");
+      return compressed;
+    },
+
+    releaseToChunk: function(){
+      this.chunks.push(this.getAndReleaseCompressed());
+    },
+
+    //aka crashChromeTab()
+    loadAllChunksToMemory: function(){
+      //comeplete chunking
+      if(packets.length>0) this.releaseToChunk();
+      this.chunks.forEach(cChunkData => {
+        //decompress chunk
+        const uint8arr =  pako.inflate(cChunkData);
+        SaveSystem.parseFromData(uint8arr.buffer); //if this fails then the compress fucked and I fuck me fuck you puppy
+      });
+      this.chunks = [];
+    },
+
+  loadChunk: function(index){
+    const uint8arr =  pako.inflate(this.chunks[index]);
+    SaveSystem.parseFromData(uint8arr.buffer);
+  }
+
+  };
+
+  const PacketStreamer = {
+    chunkSize: 1000,
+    tempPacketStream: [],
+    length: 0,
+    currentChunkIdx: 0,
+
+    addPacket: function (pack) {
+      if(this.currentChunkIdx!= Math.floor(this.length/this.chunkSize)) this.loadChunk(Math.floor(this.length/this.chunkSize));
+      this.tempPacketStream.push(pack);
+      this.length++;
+      this.releaseAll();
+    },
+
+    loadChunk: function(indx){
+      this.tempPacketStream = MemoryManager.loadChunk(indx);
+      this.currentChunkIdx = indx;
+    },
+
+    releaseAll: function(){
+       while(this.tempPacketStream.length>this.chunkSize){
+        this.release();
+      }
+    },
+
+    release: function(){
+      getAndReleaseCompressed(this.tempPacketStream.splice(0, this.tempPacketStream.length>this.chunkSize? this.chunkSize : this.tempPacketStream.length));
+    },
+
+    getPacket: function(index){
+      if(index>=this.length){
+        index%=this.length; //troll
+      }
+      const location = Math.floor(index/this.chunkSize);
+      if(this.currentChunkIdx!=location) this.loadChunk(location);
+      return this.tempPacketStream[index%this.chunkSize];
+    }
+
+  
+
   }
 
 
@@ -441,6 +528,7 @@
         });
         console.log("replay func called at iReplayPacketIdx " + iReplayPacketIdx + " and iReplayRelativeTime "+ iReplayRelativeTime +", bReplaying is " + bReplaying + ".");
         window.bReplaying = true;
+        console.log(packets.length+ " packets.");
         iReplayRelativeTime = packets[iReplayPacketIdx].time; 
         console.log("updated iReplayRelativeTime from iReplayPacketIdx: " + iReplayRelativeTime);
 
@@ -523,6 +611,7 @@
       ,packetLoadTest: function(){
         SaveSystem.triggerFileUpload();
       }
+      ,memngr:MemoryManager
     };
 
 
