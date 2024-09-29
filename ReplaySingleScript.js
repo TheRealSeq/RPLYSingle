@@ -143,6 +143,8 @@
 
       //console.log(js.match(gameSocketVar+"\\.onmessage=(function\\(([a-zA-Z$_,]+)\\)\\{.+?(?=\\},"+ gameSocketVar + "))"));
       const onMessageMatch = js.match(H.ws+"\\.onmessage=(function\\(([a-zA-Z$_,]+)\\)\\{.+?(?=,"+ H.ws + "))");
+      const onMessageMatch2 = js.match(H.ws+"\\.onmessage=(function\\([a-zA-Z$_,]+\\)\\{).+?(?=,"+ H.ws + ")");
+
       //FUCK YOU PUPPY
       //I love you puppy
 
@@ -152,15 +154,37 @@
       console.log(onMessageMatch[1]);
       console.log(onMessage2Match[1]);
 
-      let onMessage1Mod = onMessageMatch[1].originalReplaceAll("syncMe","nononono");
-      onMessage1Mod = onMessage1Mod.originalReplaceAll("hitMe","nononono");
+      let onMessage2Mod  = onMessage2Match[1];
+
+      let onMessage1Mod = onMessageMatch[1].originalReplaceAll("syncMe","replacedValueSyncMe");
+      onMessage1Mod = onMessage1Mod.originalReplaceAll("hitMe","replacedValueHitMe");
       onMessage1Mod = onMessage1Mod.originalReplaceAll("hitMeHardBoiled","nononono");
+      //onMessage1Mod = onMessage1Mod.originalReplace()
       console.log("meid: " + H.meid);
       onMessage1Mod = onMessage1Mod.originalReplaceAll(H.meid, "-1");
+      H.addPlayerID = js.match(/addPlayer:var ([a-zA-Z$_,]+)=/)[1];
+      const endOfAddPlayerUnpackingMatch = js.match(/\.gameType=[a-zA-Z$_,]+\.unPackInt8U\(\),/);
+      console.log(endOfAddPlayerUnpackingMatch);
+      //onMessage1Mod = onMessage1Mod.originalReplace(endOfAddPlayerUnpackingMatch[0], endOfAddPlayerUnpackingMatch[0] +"(("+H.meid+ "=="+H.addPlayerID+ ")?(console.log('me'),continue):console.log('notME')),")
+      //onMessage1Mod = onMessage1Mod.originalReplace(endOfAddPlayerUnpackingMatch[0], endOfAddPlayerUnpackingMatch[0] +"console.log('fuck you')){}if("+H.meid+ "=="+H.addPlayerID+ "){console.log('me');continue;}if(");
+
+      //onMessage1Mod = onMessage1Mod.originalReplace(onMessageMatch2[1], onMessageMatch2[1]+H.meid+"=-1;");//logCommCodeExternal
+     // onMessage1Mod = onMessage1Mod.originalReplace("var t=Iy.unPackInt8U();", "var t=Iy.unPackInt8U();window." + functionNames.logCommCodeExternal + "(t);"); //fuck dynamic!!!
+      //modifyJS("cmd=Iy.unPackInt8U(),", "cmd=Iy.unPackInt8U(),window." + functionNames.logCommCodeExternal + "(cmd),");
+
+      
+
+      const respawnValidityCheckMatch = js.match(/(\.unPackInt8U\(\);\()([a-zA-Z$_,]+=[a-zA-Z$_,]+\[([a-zA-Z$_,]+)\])(\)&&\([a-zA-Z$_,]+\.[a-zA-Z$_,]+\.removeFromPlay)/);
+      console.log(respawnValidityCheckMatch);
+      //onMessage1Mod= onMessage1Mod.originalReplaceAll(respawnValidityCheckMatch[2], "("+respawnValidityCheckMatch[2]+"&&"+respawnValidityCheckMatch[3]+"!="+H.meid+")");
+      //onMessage1Mod
+
+      console.log(onMessage1Mod);
 
 
-      H.onMessage = onMessageMatch[1];
-      H.onMessage2 = onMessage2Match[1]
+
+      H.onMessage = onMessage1Mod;
+      H.onMessage2 = onMessage2Match[1];
 
 
         const variableNameRegex = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
@@ -204,7 +228,12 @@
           console.log("releasing packets to chunk compressor...");
           MemoryManager.releaseToChunk();
         }
-      })
+      });
+      cf("logCommCodeExternal", function(cc){
+        console.log("c");
+        console.log(cc);
+        console.log(C[cc]);
+      });
     }
 
     function injPreGrab(js, inj){
@@ -235,6 +264,11 @@
       const leaveMatch = js.match(H.ws+"\\.close\\([a-zA-Z$_,]+\\.mainMenu\\)");
       console.log(leaveMatch);
       inj(leaveMatch[0],  H.ws + "?" + leaveMatch[0] + ":console.log('no ws! prob in replay so bye bye!!!')");
+
+      //make respawn not set view to myplayer if in replay
+      const setViewToMeIDAfterMePlayerRespawnMatch = js.match("(this\\.id==" + H.meid + ")(&&\\([a-zA-Z$_,]+="+H.meid+"\\))");
+      console.log(setViewToMeIDAfterMePlayerRespawnMatch);
+      //inj(setViewToMeIDAfterMePlayerRespawnMatch[0], "("+setViewToMeIDAfterMePlayerRespawnMatch[1]+ "&&!window.bReplaying)" + setViewToMeIDAfterMePlayerRespawnMatch[2]);
 
     }
 
