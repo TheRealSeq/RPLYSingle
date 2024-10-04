@@ -316,7 +316,6 @@
 
 
   const SaveSystem = {
-    //TODO: fix this!
     //----------------------------------------------------------------------------------------------------------------------------------
     SAVE_VERSION: 1,
     bIsInit: false,
@@ -424,7 +423,7 @@
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }
-      downloadBlob(uint8Array, 'data.bin', 'application/octet-stream');
+      downloadBlob(uint8Array, 'Replay.SRPLY', 'application/octet-stream');
     },
 
     compressPacketsToByteArray: function(packs){
@@ -603,7 +602,7 @@
                 ss.onMessage(packet.data); 
               break;
               case 2: 
-                //console.log("on2");
+                //console.log("on2");            
                 ss.onMessage2(packet.data); 
               break;
             }
@@ -662,13 +661,15 @@
       setPacketIndex: function(val){
         iReplayPacketIdx = val;
       }
-      ,packetTest: function(){
+      ,saveReplay: function(){
         SaveSystem.savePacketsToFile();
       }
-      ,packetLoadTest: function(){
+      ,loadReplay: function(){
         SaveSystem.triggerFileUpload();
       }
       ,memngr:MemoryManager
+      ,pckStrmr: PacketStreamer
+      ,svsys: SaveSystem
     };
 
 
