@@ -270,6 +270,21 @@
       console.log(setViewToMeIDAfterMePlayerRespawnMatch);
       //inj(setViewToMeIDAfterMePlayerRespawnMatch[0], "("+setViewToMeIDAfterMePlayerRespawnMatch[1]+ "&&!window.bReplaying)" + setViewToMeIDAfterMePlayerRespawnMatch[2]);
 
+      //update_ 
+      const playerUpdate_Match = js.match(H._playerThing+ ".prototype.move");
+
+      //temp
+      //, console.log('me'+"+H.meid+"),console.log(kb.id)
+      //inj("if(Nb===AL.firstPerson)kb", "if(false)kb");
+      //inj("iO.PS=WN.position.x,iO.oS=WN.position.y,iO.mS=WN.position.z,", "");
+
+      //inj(";Tb&&rb.update(t)", ";(Tb||window.bReplaying)&&rb.update(t)");
+      //inj("EL.prototype.update=function(e){", "EL.prototype.update=function(e){console.log('cam loc: ' + WN.position);");
+      //inj("iO&&(Cb.update(t)", "(iO&&!window.bReplaying)&&(Cb.update(t)");
+      const meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTF = js.match(/\)\}([a-zA-Z$_,]+)&&\([a-zA-Z$_,]+\.update\([a-zA-Z$_,]+\)/);
+      //console.log("BULLSHIT DUMBASS : "+meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTF);
+      H.me = meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTF[1];
+      inj(meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTF[0], meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTF[0].originalReplace(H.me, "("+H.me+"&&!window.bReplaying)"));
     }
 
     //class declarations
@@ -562,8 +577,6 @@
       } 
       return this.tempPacketStream[index%this.chunkSize];
     }
-
-  
 
   }
 
