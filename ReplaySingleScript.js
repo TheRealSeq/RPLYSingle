@@ -277,14 +277,22 @@
       //, console.log('me'+"+H.meid+"),console.log(kb.id)
       //inj("if(Nb===AL.firstPerson)kb", "if(false)kb");
       //inj("iO.PS=WN.position.x,iO.oS=WN.position.y,iO.mS=WN.position.z,", "");
+      
 
       //inj(";Tb&&rb.update(t)", ";(Tb||window.bReplaying)&&rb.update(t)");
       //inj("EL.prototype.update=function(e){", "EL.prototype.update=function(e){console.log('cam loc: ' + WN.position);");
       //inj("iO&&(Cb.update(t)", "(iO&&!window.bReplaying)&&(Cb.update(t)");
-      const meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTF = js.match(/\)\}([a-zA-Z$_,]+)&&\([a-zA-Z$_,]+\.update\([a-zA-Z$_,]+\)/);
-      //console.log("BULLSHIT DUMBASS : "+meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTF);
-      H.me = meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTF[1];
-      inj(meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTF[0], meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTF[0].originalReplace(H.me, "("+H.me+"&&!window.bReplaying)"));
+      const meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTFMatch = js.match(/\)\}([a-zA-Z$_,]+)&&\([a-zA-Z$_,]+\.update\([a-zA-Z$_,]+\)/);
+      //console.log("BULLSHIT DUMBASS : "+meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTFMatch);
+      H.me = meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTFMatch[1];
+      inj(meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTFMatch[0], meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTFMatch[0].originalReplace(H.me, "("+H.me+"&&!window.bReplaying)"));
+      
+            //inj("iO.PS=WN.position.x,iO.oS=WN.position.y,iO.mS=WN.position.z,", "");
+      const makePlayerPositionEqualCameraPositionForSomeFUCKINGReasonMatch = js.match(H.me+ "\\."+ H.x+ "="+ H.CAMERA+ "\\.position\\.x,"+
+        H.me+ "\\."+ H.y+ "="+ H.CAMERA+ "\\.position\\.y,"+
+        H.me+ "\\."+ H.z+ "="+ H.CAMERA+ "\\.position\\.z,"
+      );
+      inj(makePlayerPositionEqualCameraPositionForSomeFUCKINGReasonMatch[0], "!window.bReplaying?(" + makePlayerPositionEqualCameraPositionForSomeFUCKINGReasonMatch[0]+"1==1):1==1,");
     }
 
     //class declarations
