@@ -696,15 +696,166 @@
 
     //create GUI
     function createGUI(){
-      const playButtonRowElem = document.getElementsByClassName("play-panel-btn-group display-grid grid-auto-flow-column gap-1 centered_x");
-      const textnode = document.createTextNode("Water");
-      const replaysButton = document.createElement("button");
-      replaysButton.textContent = "Replays";
-      console.log(playButtonRowElem);
-      const elem = document.createElement("div");
-      elem.id = "replayListPopup";
-      elem.className = "popup_close clickme roundme_sm";
-      playButtonRowElem[0].appendChild(elem);
-      playButtonRowElem[0].appendChild(replaysButton);
+      const playButtonRowElem = document.getElementsByClassName("play-panel-btn-group display-grid grid-auto-flow-column gap-1 centered_x"); //I hate css
+      const replaysButton = document.createElement("button");//I hate css
+      replaysButton.textContent = "Replays";//I hate css
+      playButtonRowElem[0].appendChild(replaysButton);//I hate css
+      replaysButton.addEventListener('click', () => {
+        createReplayListElement();
+    });
     }
+
+    function createReplayListElement(){
+   // bg
+   const overlay = document.createElement('div');
+   overlay.style.position = 'fixed';
+   overlay.style.top = '0';
+   overlay.style.left = '0';
+   overlay.style.width = '100%';
+   overlay.style.height = '100%';
+   overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+   overlay.style.display = 'flex';
+   overlay.style.justifyContent = 'center';
+   overlay.style.alignItems = 'center';
+   overlay.style.zIndex = '9999';
+   overlay.style.fontFamily = 'Arial, sans-serif';  
+
+   // container
+   const popup = document.createElement('div');
+   popup.style.width = '600px';  // Breiteres Popup
+   popup.style.height = '500px';
+   popup.style.borderRadius = '10px';
+   popup.style.boxShadow = '0 5px 15px rgba(0, 0, 0, 0.3)';
+   popup.style.display = 'flex';
+   popup.style.flexDirection = 'column';
+   popup.style.backgroundColor = '#333333'
+
+   // title
+   const title = document.createElement('h2');
+   title.innerText = 'Replays';
+   title.style.margin = '0';
+   title.style.padding = '15px';
+   title.style.textAlign = 'center';
+   title.style.backgroundColor = '#1a1a1a';
+   title.style.color = '#fff';
+   title.style.borderTopLeftRadius = '10px';
+   title.style.borderTopRightRadius = '10px';
+   title.style.fontSize = '24px';  
+   title.style.fontFamily = 'Tahoma, sans-serif';  
+
+
+   // scrollPane
+   const content = document.createElement('div');
+   content.style.flexGrow = '1';
+   content.style.padding = '15px';
+   content.style.overflowY = 'auto';
+   content.style.maxHeight = '400px';
+
+
+// test elems
+for (let i = 1; i <= 5; i++) {
+ const largeText = `Big text cont ${i}`;
+ const smallText = `small text ${i}`;
+ const element = createElement(largeText, smallText);
+ content.appendChild(element);
+}
+
+   // close
+   const closeButton = document.createElement('button');
+   closeButton.innerText = 'close';
+   closeButton.style.padding = '10px';
+   closeButton.style.backgroundColor = '#1a1a1a';
+   closeButton.style.color = '#fff';
+   closeButton.style.border = 'none';
+   closeButton.style.borderRadius = '0 0 10px 10px';
+   closeButton.style.cursor = 'pointer';
+   closeButton.style.fontSize = '16px';  // Größere Schrift für den Schließen-Button
+   closeButton.addEventListener('click', () => {
+       document.body.removeChild(overlay);
+   });
+
+   popup.appendChild(title);
+   popup.appendChild(content);
+   popup.appendChild(closeButton);
+   overlay.appendChild(popup);
+   document.body.appendChild(overlay);
+
+    }
+
+
+
+
+    // Funktion zum Erstellen eines einzelnen Elements
+    function createElement(largeText, smallText) {
+      const element = document.createElement('div');
+      element.style.display = 'flex';
+      element.style.justifyContent = 'space-between';
+      element.style.marginBottom = '15px';
+      element.style.borderBottom = '1px solid #ccc';
+      element.style.paddingBottom = '10px';
+
+      // Text-Container
+      const textContainer = document.createElement('div');
+      textContainer.style.flex = '1';
+
+      const largeTextElement = document.createElement('div');
+      largeTextElement.innerText = largeText;
+      largeTextElement.style.fontSize = '18px';
+      largeTextElement.style.fontWeight = 'bold';
+      largeTextElement.style.color = "#ffffff";
+
+      const smallTextElement = document.createElement('div');
+      smallTextElement.innerText = smallText;
+      smallTextElement.style.fontSize = '14px';
+      smallTextElement.style.color = '#7d7d7d';
+
+      textContainer.appendChild(largeTextElement);
+      textContainer.appendChild(smallTextElement);
+
+      // Button-Container
+      const buttonContainer = document.createElement('div');
+      buttonContainer.style.display = 'flex';
+      buttonContainer.style.gap = '5px';
+
+      const buttonStyle = {
+          padding: '5px 5px', // Kleinere Buttons
+          backgroundColor: '#007BFF',
+          color: '#000000',
+          border: 'none',
+          borderRadius: '3px',
+          cursor: 'pointer',
+          fontSize: '12px', // Kleinere Schrift für Buttons
+          fontWeight: 'bold',
+      };
+
+      const button1 = document.createElement('button');
+      button1.innerText = 'save';
+      Object.assign(button1.style, buttonStyle); // Stil anwenden
+      button1.style.backgroundColor = "#007BFF";
+
+      const button2 = document.createElement('button');
+      button2.innerText = 'play';
+      Object.assign(button2.style, buttonStyle); // Stil anwenden
+      button2.style.backgroundColor = "#09e609";
+      button2.style.padding = '8px 8px';
+      button2.style.fontSize = '14px';
+
+
+      const button3 = document.createElement('button');
+      button3.innerText = 'delete';
+      Object.assign(button3.style, buttonStyle); // Stil anwenden
+      button3.style.backgroundColor = "#ad0903";
+
+
+      buttonContainer.appendChild(button1);
+      buttonContainer.appendChild(button2);
+      buttonContainer.appendChild(button3);
+
+      element.appendChild(textContainer);
+      element.appendChild(buttonContainer);
+
+      return element;
+  }
+
+    
   })();
