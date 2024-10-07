@@ -30,7 +30,8 @@
       const pTime = Date.now() - recordStartTime;
       const crP = new Packet3(d, pTime, t);
       //packets.push(crP);
-      PacketStreamer.addPacket(crP);
+      //PacketStreamer.addPacket(crP);
+      rePlaytemp.recordPacket(d, t);
       return;
     });
     cf("logCommCodeExternal", function (cc) {
@@ -337,16 +338,18 @@
     }
   }
 
+  const rePlaytemp = new RePlay(); //TODO: make this not be here
+
   class RePlayer {
     constructor() {
-      this.activeReplay = undefined;
+      this.activeReplay = rePlaytemp;
       this.iReplayIndex = 0;
     }
 
     async resume() {
       bReplaying = true;
       while (
-        activeReplay &&
+        this.activeReplay &&
         this.iReplayIndex < this.activeReplay.streamer.length &&
         bReplaying
       ) {
@@ -389,5 +392,6 @@
 
   //-----------------------------------------------------------------------------------------------------------------------------------------
   window.bReplaying = false;
+  window.replayer = new RePlayer();
   //------------------------------------------------------------------------------------------------------------------------------------------
 })();
