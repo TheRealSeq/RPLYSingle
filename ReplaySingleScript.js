@@ -267,11 +267,6 @@
   function createFuncsExternal(cf) {
     //cf is the createAnonFunction method. Fuck you puppy
     cf("recordPacket", function (d, t) {
-      if (recordStartTime < 0) {
-        recordStartTime = Date.now();
-      }
-      const pTime = Date.now() - recordStartTime;
-      const crP = new Packet3(d, pTime, t);
       //packets.push(crP);
       //PacketStreamer.addPacket(crP);
       rePlaytemp.recordPacket(d, t);
@@ -474,7 +469,8 @@
     }
 
     loadOnDemand(packetIdx) {
-      const location = Math.floor(packetIdx / this.chunkSize);
+      const location = Math.floor(packetIdx / this.chunkSize) || 0;
+      console.log(location);
       if (location != this.loadedChunk) {
         this.releaseCurrent();
         this.loadChunk(location);
@@ -482,27 +478,46 @@
     }
 
     releaseCurrent() {
-      chunks[this.loadedChunk] = MemoryTool.compressToByteArray(
+      console.log("released " + this.loadedChunk);
+      this.chunks[this.loadedChunk] = MemoryTool.compressToByteArray(
         this.packetStream,
       );
     }
 
     loadChunk(chunkIdx) {
-      this.packetStream = MemoryTool.decompressToPacket(chunks[chunkIdx]);
+      console.log("load " + chunkIdx);
+      if (chunkIdx < this.chunks.length) {
+        this.packetStream = MemoryTool.decompressToPacket(
+          this.chunks[chunkIdx],
+        );
+      } else {
+        console.log(
+          "chunk idx empty. Clearing arr. (" +
+            chunkIdx +
+            "/" +
+            this.chunks.length +
+            ")",
+        );
+        this.packetStream = [];
+      }
+      this.loadedChunk = chunkIdx;
     }
   }
 
   class MemoryTool {
     static decompressToPacket(arr) {
-      return this.arrayToPackets(this.decompress(arr));
+      console.log("arr: " + arr);
+      const dec = this.decompress(arr);
+      console.log(dec);
+      return this.arrayToPackets(dec.buffer);
     }
 
     static decompress(arr) {
-      pako.inflate(arr);
+      return pako.inflate(arr);
     }
 
     static arrayToPackets(arr) {
-      const v = new DataView(data);
+      const v = new DataView(arr);
       let offs = 0;
       const numPacks = v.getUint32(offs);
       offs += 4;
@@ -519,7 +534,7 @@
           arr[j] = v.getUint8(offs);
           offs++;
         }
-        const pack = new Packet3(this.fakeWSResponseStructure(arr), rTR, type);
+        const pack = new Packet3({ data: arr }, rTR, type);
         newPacks.push(pack);
       }
       return newPacks;
@@ -534,7 +549,7 @@
      * @argument packets : Packet3[] the array of packets
      */
     static packetsToByteArray(packets) {
-      const buffer = new ArrayBuffer(this.calcSaveLength(packets));
+      const buffer = new ArrayBuffer(this.calcByteArrayLength(packets));
       const v = new DataView(buffer);
       let offs = 0;
       /*
@@ -586,27 +601,29 @@
   class RePlayer {
     constructor() {
       this.activeReplay = rePlaytemp;
-      this.iReplayIndex = 0;
+      this.iReplayPacketIdx = 0;
+      this.iReplayRelativeTime = 0;
     }
 
     async resume() {
       bReplaying = true;
       while (
         this.activeReplay &&
-        this.iReplayIndex < this.activeReplay.streamer.length &&
+        this.iReplayPacketIdx < this.activeReplay.streamer.length &&
         bReplaying
       ) {
         const packet = //packets.shift(); //grab first packet);
-          PacketStreamer.getPacket(iReplayPacketIdx++);
-        const delayDur = packet.time - iReplayRelativeTime;
+          this.activeReplay.streamer.getPacket(this.iReplayPacketIdx++);
+        console.log(packet);
+        const delayDur = packet.time - this.iReplayRelativeTime;
         //console.log("sleep for: " + delayDur);
         if (delayDur > 0) await sleep(delayDur);
         if (
           packet.data &&
           packet.peekByte() != C.syncMe &&
           packet.peekByte() != C.hitMe &&
-          packet.peekByte() != C.socketReady &&
-          !bannedCommCodes.includes(packet.peekByte())
+          packet.peekByte() != C.socketReady //&&
+          //!bannedCommCodes.includes(packet.peekByte())
         ) {
           //I want to kill myself :(
           //yes I know that that check up there ^^^^^^^^^^^^ doesn't account for any packet after the first one, but eh...
@@ -622,7 +639,7 @@
           }
         }
 
-        iReplayRelativeTime = packet.time; //set relative time location to match packet.
+        this.iReplayRelativeTime = packet.time; //set relative time location to match packet.
       }
       bReplaying = false;
     }
