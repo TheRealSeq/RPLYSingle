@@ -696,18 +696,15 @@
 
     //create GUI
     function createGUI(){
-    const playButtonRowElem = document.getElementsByClassName("play-panel-btn-group display-grid grid-auto-flow-column gap-1 centered_x");
-    const textnode = document.createTextNode("Water");
-    const replaysButton = document.createElement("button");
-    replaysButton.textContent = "Replays";
-    console.log(playButtonRowElem);
-    const elem = document.createElement("div");
-    elem.id = "replayListPopup";
-    elem.className = "popup_close clickme roundme_sm";
-    playButtonRowElem[0].appendChild(elem);
-    playButtonRowElem[0].appendChild(replaysButton);
-
-
-
+      const playButtonRowElem = document.getElementsByClassName("play-panel-btn-group display-grid grid-auto-flow-column gap-1 centered_x");
+      const textnode = document.createTextNode("Water");
+      const replaysButton = document.createElement("button");
+      replaysButton.textContent = "Replays";
+      console.log(playButtonRowElem);
+      const elem = document.createElement("div");
+      elem.id = "replayListPopup";
+      elem.className = "popup_close clickme roundme_sm";
+      playButtonRowElem[0].appendChild(elem);
+      playButtonRowElem[0].appendChild(replaysButton);
     }
   })();
