@@ -54,7 +54,7 @@
     //VAR STUFF
     let F=[];
 
-    
+
     const getScrambled=function(){return Array.from({length: 10}, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join('')}
     const createAnonFunction=function(name,func){
       const funcName=getScrambled();
@@ -126,7 +126,7 @@
       H = clientKeys.vars;
 
       let injectionString="";
-        
+
       const modifyJS = function(find,replace) {
         let oldJS = js;
         js = js.originalReplace(find,replace);
@@ -172,7 +172,7 @@
      // onMessage1Mod = onMessage1Mod.originalReplace("var t=Iy.unPackInt8U();", "var t=Iy.unPackInt8U();window." + functionNames.logCommCodeExternal + "(t);"); //fuck dynamic!!!
       //modifyJS("cmd=Iy.unPackInt8U(),", "cmd=Iy.unPackInt8U(),window." + functionNames.logCommCodeExternal + "(cmd),");
 
-      
+
 
       const respawnValidityCheckMatch = js.match(/(\.unPackInt8U\(\);\()([a-zA-Z$_,]+=[a-zA-Z$_,]+\[([a-zA-Z$_,]+)\])(\)&&\([a-zA-Z$_,]+\.[a-zA-Z$_,]+\.removeFromPlay)/);
       console.log(respawnValidityCheckMatch);
@@ -208,7 +208,7 @@
     };
     createAnonFunction("retrieveFunctions",function(vars) { ss=vars;});
     createFuncsExternal(createAnonFunction);
-    }; //I love you puppy <3 
+    }; //I love you puppy <3
 
     let packets = []; // array of recorded packets. Fuck you puppy
     let recordStartTime = -1;
@@ -248,7 +248,7 @@
     function injExternal(js, inj){
       const onMessage1Match = js.match(H.ws+"\\.onmessage=function\\(([a-zA-Z$_,]+)\\)\\{");
       const onMessage2Match = js.match("("+H.ws+"\\.onmessage=function\\(([a-zA-Z$_,]+)\\)\\{)switch");
-    
+
       inj(onMessage1Match[0], onMessage1Match[0] + "window."+functionNames.recordPacket+"("+onMessage1Match[1]+", 1);");
       inj(onMessage2Match[1], onMessage2Match[1] + "window."+functionNames.recordPacket+"("+onMessage2Match[2]+", 2);");
 
@@ -270,14 +270,14 @@
       console.log(setViewToMeIDAfterMePlayerRespawnMatch);
       //inj(setViewToMeIDAfterMePlayerRespawnMatch[0], "("+setViewToMeIDAfterMePlayerRespawnMatch[1]+ "&&!window.bReplaying)" + setViewToMeIDAfterMePlayerRespawnMatch[2]);
 
-      //update_ 
+      //update_
       const playerUpdate_Match = js.match(H._playerThing+ ".prototype.move");
 
       //temp
       //, console.log('me'+"+H.meid+"),console.log(kb.id)
       //inj("if(Nb===AL.firstPerson)kb", "if(false)kb");
       //inj("iO.PS=WN.position.x,iO.oS=WN.position.y,iO.mS=WN.position.z,", "");
-      
+
 
       //inj(";Tb&&rb.update(t)", ";(Tb||window.bReplaying)&&rb.update(t)");
       //inj("EL.prototype.update=function(e){", "EL.prototype.update=function(e){console.log('cam loc: ' + WN.position);");
@@ -286,7 +286,7 @@
       //console.log("BULLSHIT DUMBASS : "+meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTFMatch);
       H.me = meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTFMatch[1];
       inj(meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTFMatch[0], meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTFMatch[0].originalReplace(H.me, "("+H.me+"&&!window.bReplaying)"));
-      
+
             //inj("iO.PS=WN.position.x,iO.oS=WN.position.y,iO.mS=WN.position.z,", "");
       const makePlayerPositionEqualCameraPositionForSomeFUCKINGReasonMatch = js.match(H.me+ "\\."+ H.x+ "="+ H.CAMERA+ "\\.position\\.x,"+
         H.me+ "\\."+ H.y+ "="+ H.CAMERA+ "\\.position\\.y,"+
@@ -300,7 +300,7 @@
       //data; //FUCK YOU PUPPY
       //time4; //FUCK YOU PUPPY 2
       //type; //FUCK YOU PUPPY 3
- 
+
       constructor(data, time, type){   //time is relative time passed somce rec start
         //this.data = data; //(Uint8Array of the ws' input) JETZT: volles Websocketonmessageantwortobjekt, somit liegt die originale data in data.data (dann halt mit new Uint8Array aber jetzt nd)
         this.time = time; //time since record start in millis
@@ -345,7 +345,7 @@
     //----------------------------------------------------------------------------------------------------------------------------------
     /*
     file ver: Uint8 (1 byte)
-    num of packets: Uint32 (4 bytes) 
+    num of packets: Uint32 (4 bytes)
     [packetarray elem]
       type: Uint8 (1 byte)
       rel time received: Uint32 (4 bytes)
@@ -366,7 +366,7 @@
 
     triggerFileUpload: function() {
       if(!this.bIsInit) this.init();
-      this.inputElem.click(); 
+      this.inputElem.click();
     },
 
     handleFileUpload: function(event) {
@@ -418,13 +418,13 @@
 
   fakeWSResponseStructure: function(uint8arr){
     return{
-      data: uint8arr.buffer 
+      data: uint8arr.buffer
     }
   },
 
   fakeWSResponseStructureFromBuffer: function(buff){
     return{
-      data: buff 
+      data: buff
     }
   },
 
@@ -462,7 +462,7 @@
         v.setUint8(offs, pack.type);
         offs++;
         v.setUint32(offs, pack.time);
-        offs+=4;  
+        offs+=4;
         v.setUint16(offs, pack.getDataAsByteArray().length);
         offs+=2;
         pack.getDataAsByteArray().forEach(byTe => {
@@ -582,14 +582,14 @@
       if(this.currentChunkIdx!=location){
         this.loadChunk(location);
         console.log("moving playback to chunk " + location );
-      } 
+      }
       return this.tempPacketStream[index%this.chunkSize];
     }
 
   }
 
 
-  
+
   //-----------------------------------------------------------------------------------------------------------------------------------------
   window.bReplaying = false;
   let iReplayPacketIdx = 0;
@@ -606,7 +606,7 @@
         console.log("replay func called at iReplayPacketIdx " + iReplayPacketIdx + " and iReplayRelativeTime "+ iReplayRelativeTime +", bReplaying is " + bReplaying + ".");
         window.bReplaying = true;
         console.log(PacketStreamer.length+ " packets.");
-        iReplayRelativeTime = PacketStreamer.getPacket(iReplayPacketIdx).time; 
+        iReplayRelativeTime = PacketStreamer.getPacket(iReplayPacketIdx).time;
         console.log("updated iReplayRelativeTime from iReplayPacketIdx: " + iReplayRelativeTime);
 
         while(PacketStreamer.length>iReplayPacketIdx && window.bReplaying){
@@ -620,11 +620,11 @@
             switch(packet.type){
               case 1:
                 //console.log("on1");
-                ss.onMessage(packet.data); 
+                ss.onMessage(packet.data);
               break;
-              case 2: 
-                //console.log("on2");            
-                ss.onMessage2(packet.data); 
+              case 2:
+                //console.log("on2");
+                ss.onMessage2(packet.data);
               break;
             }
           }
@@ -658,11 +658,11 @@
           switch(packet.type){
             case 1:
               console.log("on1");
-              ss.onMessage(packet.data); 
+              ss.onMessage(packet.data);
             break;
-            case 2: 
+            case 2:
               console.log("on2");
-              ss.onMessage2(packet.data); 
+              ss.onMessage2(packet.data);
             break;
           }
         }
@@ -691,7 +691,26 @@
       ,memngr:MemoryManager
       ,pckStrmr: PacketStreamer
       ,svsys: SaveSystem
+      ,createGUI: createGUI
     };
+
+    //create GUI
+    function createGUI(){
+    const playButtonRowElem = document.getElementsByClassName("play-panel-btn-group display-grid grid-auto-flow-column gap-1 centered_x");
+    const textnode = document.createTextNode("Water");
+    const replaysButton = document.createElement("button");
+    replaysButton.textContent = "Replays";
+    console.log(playButtonRowElem);
+    const elem = document.createElement("div");
+    elem.id = "replayListPopup";
+    elem.className = "popup_close clickme roundme_sm";
+    playButtonRowElem[0].appendChild(elem);
+    playButtonRowElem[0].appendChild(replaysButton);
+
+
+
+    }
+
 
 
   })();
