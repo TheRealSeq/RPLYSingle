@@ -645,6 +645,38 @@
     }
   }
 
+  class FileManager {
+    SAVE_VERSION = 1;
+
+    static createFileBytes(replay) {
+      replay.streamer.releaseCurrent();
+      const body = replay.streamer.chunks;
+      const bodyComp = MemoryTool.compress(body);
+
+      const content = new ArrayBuffer(
+        this.getHeadLength(replay) + bodyComp.length,
+      );
+      const v = new DataView(content);
+      let offs = 0;
+      v.setUint8(offs, SAVE_VERSION); //save ver
+      offs++;
+      v.setBigUint64(offs, replay.recordStartTime); //record start time
+      offs += 8;
+      //write body
+      //there has to be a better way to do this but cba
+      for (let i = 0; i < bodyComp.length; i++) {
+        content[offs + i] = bodyComp[i];
+      }
+    }
+
+    //in bytes
+    static getHeadLength(replay) {
+      let val = 1; //version
+      val += 8; //replayStartTime: biguint64
+      return val;
+    }
+  }
+
   //https://stackoverflow.com/questions/951021/what-is-the-javascript-version-of-sleep
   function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -653,5 +685,7 @@
   //-----------------------------------------------------------------------------------------------------------------------------------------
   window.bReplaying = false;
   window.replayer = new RePlayer();
+  window.save = FileManager;
+  window.rply = rePlaytemp;
   //------------------------------------------------------------------------------------------------------------------------------------------
 })();
