@@ -250,6 +250,10 @@
           H.SCENE + ".render",
           `window["${functionNames.retrieveFunctions}"]({${injectionString}},true)||${H.SCENE}.render`,
         );
+        
+        //this one might be risky...
+        const beforeNotPlayingInIFramMatch = js.match(/subtree:!0\}\);var [a-zA-Z$_,]+=\(\)=>\{/)
+        modifyJS(beforeNotPlayingInIFramMatch[0], beforeNotPlayingInIFramMatch[0] + `window["${functionNames.retrieveFunctions}"]({${injectionString}},true);`);
         // console.log(js);
 
         injExternal(js, modifyJS); //fuck you puppy
@@ -291,11 +295,20 @@
       beforeMeCheckRespawnMatch[1] +
         "(" +
         beforeMeCheckRespawnMatch[2] +
-        "&&!window.bReplaying)?(console.log('fuck you hh '+window.bReplaying),",
+        "&&!window.bReplaying)?(console.log('fuck you hah '+window.bReplaying),",
     );
+
+    const aidsMatch = js.match(
+      /([a-zA-Z$_,]+)=([a-zA-Z$_,]+)\.playType===vueApp\.playTypes\.createPrivate\?"createPrivate".+?(?=,)/,
+    );
+    console.log(aidsMatch);
+    inj(aidsMatch[0], "console.log('google anal')");
   }
 
   function injExternal(js, inj) {
+
+
+
     const onMessage1Match = js.match(
       H.ws + "\\.onmessage=function\\(([a-zA-Z$_,]+)\\)\\{",
     );
@@ -322,11 +335,7 @@
         ", 2);",
     );
 
-    const aidsMatch = js.match(
-      /([a-zA-Z$_,]+)=([a-zA-Z$_,]+)\.playType===vueApp\.playTypes\.createPrivate\?"createPrivate".+?(?=,)/,
-    );
-    console.log(aidsMatch);
-    inj(aidsMatch[0], "console.log('google anal')");
+
 
     const sendMatch = js.match(
       /(new Uint8Array\(this\.arrayBuffer,0,this\.idx\);)([a-zA-Z$_,]+)/,
@@ -502,13 +511,25 @@
       }
       this.loadedChunk = chunkIdx;
     }
+
+    loadAll(){
+      const packets = [];
+      for(let i = 0; i<this.length; i++){
+        packets[i] = this.getPacket(i);
+      }
+      return packets;
+    }
+
+    loadAllCompressed(){
+      return MemoryTool.compressToByteArray(this.loadAll());
+    }
   }
 
   class MemoryTool {
     static decompressToPacket(arr) {
-      console.log("arr: " + arr);
+      //console.log("arr: " + arr);
       const dec = this.decompress(arr);
-      console.log(dec);
+      //console.log(dec);
       return this.arrayToPackets(dec.buffer);
     }
 
@@ -596,7 +617,7 @@
     }
   }
 
-  const rePlaytemp = new RePlay(); //TODO: make this not be here
+  let rePlaytemp = new RePlay(); //TODO: make this not be here
 
   class RePlayer {
     constructor() {
@@ -614,7 +635,7 @@
       ) {
         const packet = //packets.shift(); //grab first packet);
           this.activeReplay.streamer.getPacket(this.iReplayPacketIdx++);
-        console.log(packet);
+        //console.log(packet);
         const delayDur = packet.time - this.iReplayRelativeTime;
         //console.log("sleep for: " + delayDur);
         if (delayDur > 0) await sleep(delayDur);
@@ -646,27 +667,46 @@
   }
 
   class FileManager {
-    SAVE_VERSION = 1;
+    static SAVE_VERSION = 2;
 
     static createFileBytes(replay) {
+      //ye imma give up on this for now
+      //for some reason it just isn't writing like correct at all?
       replay.streamer.releaseCurrent();
-      const body = replay.streamer.chunks;
-      const bodyComp = MemoryTool.compress(body);
+      const bodyComp = replay.streamer.loadAllCompressed();
 
-      const content = new ArrayBuffer(
-        this.getHeadLength(replay) + bodyComp.length,
-      );
-      const v = new DataView(content);
+      const content2 = new ArrayBuffer(this.getHeadLength(replay) + bodyComp.length);
+      const v = new DataView(content2);
       let offs = 0;
-      v.setUint8(offs, SAVE_VERSION); //save ver
+      v.setUint8(offs, this.SAVE_VERSION); //save ver
+      //test
+      //v.setUint8(offs, 55);
       offs++;
-      v.setBigUint64(offs, replay.recordStartTime); //record start time
+      v.setBigUint64(offs, BigInt(replay.recordStartTime)); //record start time
       offs += 8;
       //write body
       //there has to be a better way to do this but cba
       for (let i = 0; i < bodyComp.length; i++) {
-        content[offs + i] = bodyComp[i];
+        v.setUint8(offs+i, bodyComp[i]) //= bodyComp[i];
       }
+      //console.log(content2);
+      return content2;
+    }
+
+    static download(replay){
+      this.downloadBlob(this.createFileBytes(replay), 'replay.SRPLY', 'application/octet-stream');
+    }
+
+    static downloadBlob(data, fileName, mimeType) {
+      const blob = new Blob([data], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
 
     //in bytes
@@ -675,6 +715,67 @@
       val += 8; //replayStartTime: biguint64
       return val;
     }
+
+    static initUploadElem(){
+      this.inputElem = document.createElement('input');
+      this.inputElem.type = 'file';
+      this.inputElem.style.display = 'block'; 
+      document.body.appendChild(this.inputElem);
+      this.inputElem.addEventListener('change', this.handleFileUpload, false);
+      this.bIsInit = true;
+    }
+
+    static handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) {
+        console.error("no file");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+          const arrayBuffer = e.target.result;
+          //console.log(arrayBuffer);
+          rePlaytemp = FileManager.computeSaveFile(arrayBuffer);
+          window.replayer.activeReplay = rePlaytemp;
+          window.rply = rePlaytemp;
+      };
+
+      reader.readAsArrayBuffer(file);
+  }
+
+    static triggerFileUpload() {
+      if(!this.bIsInit) this.initUploadElem();
+      this.inputElem.click(); 
+    }
+
+    static computeSaveFile(data){
+      //assuming data is a bytebuffer
+      const v = new DataView(data); 
+      let offs = 0;
+      while(v.getInt8(offs)==0){
+        ++offs; //I hate this
+      }
+      const ver = v.getUint8(offs);
+      offs++;
+      if(ver!=this.SAVE_VERSION){
+        console.warn("SRPLY: WARNING: the loaded save version number is different than the FM's ver. Stuff might not load correctly! (f: " + ver +", FM: " + this.SAVE_VERSION+")");
+      }
+      let parsedReplay = new RePlay();
+      parsedReplay.recordStartTime = Number(v.getBigUint64(offs));
+      offs+=8;
+      //done with head. from now on, it will only be the packets.
+      const packDatArray = new Uint8Array(v.byteLength-offs);
+      for(let i = 0; i<packDatArray.length; i++){
+        packDatArray[i] = v.getUint8(i+offs);
+      }
+      const allPacks = MemoryTool.decompressToPacket(packDatArray);
+      for(let i = 0;i<allPacks.length; i++){
+        parsedReplay.streamer.addPacket(allPacks[i]);
+      }
+      return parsedReplay;
+    }
+
   }
 
   //https://stackoverflow.com/questions/951021/what-is-the-javascript-version-of-sleep
