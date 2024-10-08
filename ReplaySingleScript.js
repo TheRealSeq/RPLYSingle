@@ -848,7 +848,54 @@
       titleText.textContent = "Replays";
       popup.appendChild(titleText);
     }
+    //scroll bg
+    const bg = document.createElement("div");
+    bg.className = "media-tabs-content f_col";
+    popup.appendChild(bg);
+    //scroll
+    const scroll = document.createElement("div");
+    scroll.className = "news-container f_row v_scroll";
+    bg.appendChild(scroll);
+    //idk if this is neccesary
+    const section = document.createElement("section");
+    section.className = "media-panel news-panel media-tab-scroll";
+    //const testElem = document.createElement("h1"); 
+    //testElem.textContent = "test very wide string content WOWOOWOWSSSS SSSSSSS SSSSSSSSSSSSSSS SSSSS SSSSSSSSSSS SSSSS SSSSSSSSS SSS this wis wrapping";
+    //section.appendChild(testElem);
+
+    section.appendChild(createReplayChild());
+
+    scroll.appendChild(section);
 
     homeScreen.appendChild(popup);
+  }
+
+  function createReplayChild(){
+    const mainDiv = document.createElement("div");
+    mainDiv.className= "player-challenges-container overflow-hidden"; //shamelessly stolen from challenges...
+
+    //create header
+    {
+    const header = document.createElement("h4");
+    header.textContent= "Replay";
+    header.style.color="#0C576F"; //have to hardcode bc not in class. Too bad!
+    header.style.lineHeight = "0em";//align to top
+    header.style.margin = ".6em";//prob not the way to do this but eh
+    header.style.fontSize = "1.3em"
+    mainDiv.appendChild(header);
+
+    const bottomText = document.createElement("p");
+    bottomText.textContent = "BOfffffff______ffffffTTOM TexT!";
+    bottomText.style.fontSize= ".7em;";
+    mainDiv.appendChild(bottomText);
+    }
+
+    //TODO: ADD BUTTÓNS
+
+    const testElem = document.createElement("h1"); 
+    testElem.textContent = "test very wide string content WOWOOWOWSSSS SSSSSSS SSSSSSSSSSSSSSS SSSSS SSSSSSSSSSS SSSSS SSSSSSSSS SSS this wis wrapping";
+    //mainDiv.appendChild(testElem);
+
+    return mainDiv;
   }
 })();
