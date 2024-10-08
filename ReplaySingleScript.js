@@ -261,8 +261,18 @@
         console.log(H); //why here? Fuck you puppy
         return js;
       };
+      didBootSetup = false;
       createAnonFunction("retrieveFunctions", function (vars) {
         ss = vars;
+        if(!didBootSetup){
+          didBootSetup = true;
+          Object.defineProperty(extern, 'observingGame', {
+            get: function() {
+              return bReplaying;
+            }
+          });
+          //createGUI();
+        }
       });
       createFuncsExternal(createAnonFunction);
     }
@@ -788,5 +798,57 @@
   window.replayer = new RePlayer();
   window.save = FileManager;
   window.rply = rePlaytemp;
+  window.createGUI = createGUI;
   //------------------------------------------------------------------------------------------------------------------------------------------
+
+  //GUI
+  function createGUI(){
+    //IK I should probably append to a child but eh doesn't matter, does it?
+    const homeScreen = document.getElementById("home_screen");
+    { //button
+    const replayButton = document.createElement("button");
+    replayButton.className = "ss_button btn_blue bevel_blue btn_sm pause-screen-btn-spectate";
+    replayButton.title = "Replays";
+     {
+    //button eye image 
+    const buttonImage = document.createElement("i");
+    buttonImage.className = "fas fa-eye fa-2x";
+    replayButton.appendChild(buttonImage);
+     }
+    //position button
+    const rplyButtonStyle = {
+      position: "absolute",
+      bottom: "var(--ss-space-lg);",
+      right: "var(--ss-space-lg);",
+      'box-shadow': "var(--ss-btn-dark-shadow), var(--ss-btn-dark-bevel) #086e8d, var(--ss-btn-light-bevel) #00ade6 !important"
+    }
+    replayButton.style = rplyButtonStyle;
+    homeScreen.appendChild(replayButton);
+    }
+    createReplayPopup();
+
+  }
+
+  function createReplayPopup(){
+    const homeScreen = document.getElementById("home_screen");
+    //create base popup container
+    const popup = document.createElement("div");
+    popup.className = "popup_window popup_lg centered roundme_md";
+    {//close button
+      const popupClose = document.createElement("button");
+      popupClose.className = "popup_close clickme roundme_sm";
+      //button image
+      const buttonImage = document.createElement("i");
+      buttonImage.className = "fas fa-times text_white fa-2x";
+      popupClose.appendChild(buttonImage);
+      popup.appendChild(popupClose);
+    }{//title
+      const titleText = document.createElement("h1");
+      titleText.className = "roundme_sm text-center";
+      titleText.textContent = "Replays";
+      popup.appendChild(titleText);
+    }
+
+    homeScreen.appendChild(popup);
+  }
 })();
