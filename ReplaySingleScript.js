@@ -233,7 +233,7 @@
 
         const variableNameRegex = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
         for (let name in H) {
-          deobf = H[name];
+          const deobf = H[name];
           if (
             variableNameRegex.test(deobf) ||
             name === "onMessage" ||
@@ -246,13 +246,14 @@
           }
         }
         console.log(injectionString);
-        modifyJS(
-          H.SCENE + ".render",
-          `window["${functionNames.retrieveFunctions}"]({${injectionString}},true)||${H.SCENE}.render`,
-        );
+       // modifyJS(
+       //   H.SCENE + ".render",
+       //   `window["${functionNames.retrieveFunctions}"]({${injectionString}},true)||${H.SCENE}.render`,
+       // );
         
         //this one might be risky...
-        const beforeNotPlayingInIFramMatch = js.match(/subtree:!0\}\);var [a-zA-Z$_,]+=\(\)=>\{/)
+        //const beforeNotPlayingInIFramMatch = js.match(/subtree:!0\}\);var [a-zA-Z$_,]+=\(\)=>\{/)
+        const beforeNotPlayingInIFramMatch = js.match(/console\.log\("loadResources\(\)"\),[a-zA-Z$_,]+\([a-zA-Z$_,]+\),function\([a-zA-Z$_,]+,[a-zA-Z$_,]+\)\{/); //heh no iframe anymore. eh still gonna keep title bc doesnt matter fuck you
         modifyJS(beforeNotPlayingInIFramMatch[0], beforeNotPlayingInIFramMatch[0] + `window["${functionNames.retrieveFunctions}"]({${injectionString}},true);`);
         // console.log(js);
 
@@ -271,19 +272,22 @@
               return bReplaying;
             }
           });
-          //createGUI();
+          createGUI();
         }
       });
       createFuncsExternal(createAnonFunction);
     }
   } //I love you puppy <3
 
+  const replays = []; //all loaded replays
+
   function createFuncsExternal(cf) {
     //cf is the createAnonFunction method. Fuck you puppy
     cf("recordPacket", function (d, t) {
       //packets.push(crP);
       //PacketStreamer.addPacket(crP);
-      rePlaytemp.recordPacket(d, t);
+      //rePlaytemp.recordPacket(d, t);
+      ReCorder.handlePacketInput(d, t);
       return;
     });
     cf("logCommCodeExternal", function (cc) {
@@ -344,6 +348,8 @@
         onMessage2Match[2] +
         ", 2);",
     );
+
+    inj("e=window}", "let e2=window}");
 
 
 
@@ -425,6 +431,23 @@
     );
   }
 
+  class ReCorder{
+    
+    static handlePacketInput(d, t){
+      if(Packet3.peekByteStatic(d) ===C.socketReady){
+        console.log("SRPLY: detected socketReady commcode, automatically creating new replay!");
+        this.releaseReplay();
+        this.currentReplay = new RePlay();
+        //not gonna return bc socketReady is filtered in playback anyway, also maybe for later stuff it might be interesting to keep it..
+      }
+      this.currentReplay.recordPacket(d, t);
+    }
+
+    static releaseReplay(){
+      if(this.currentReplay) replays.push(this.currentReplay);
+    }
+  }
+
   //class declarations
   class Packet3 {
     //data; //FUCK YOU PUPPY
@@ -443,6 +466,10 @@
 
     peekByte() {
       return new Uint8Array(this.data.data)[0];
+    }
+
+    static peekByteStatic(dat){
+      return new Uint8Array(dat.data)[0];
     }
 
     getDataAsByteArray() {
@@ -630,8 +657,8 @@
   let rePlaytemp = new RePlay(); //TODO: make this not be here
 
   class RePlayer {
-    constructor() {
-      this.activeReplay = rePlaytemp;
+    constructor(replay) {
+      this.activeReplay = replay;
       this.iReplayPacketIdx = 0;
       this.iReplayRelativeTime = 0;
     }
@@ -680,8 +707,6 @@
     static SAVE_VERSION = 2;
 
     static createFileBytes(replay) {
-      //ye imma give up on this for now
-      //for some reason it just isn't writing like correct at all?
       replay.streamer.releaseCurrent();
       const bodyComp = replay.streamer.loadAllCompressed();
 
@@ -746,9 +771,9 @@
       reader.onload = function(e) {
           const arrayBuffer = e.target.result;
           //console.log(arrayBuffer);
-          rePlaytemp = FileManager.computeSaveFile(arrayBuffer);
-          window.replayer.activeReplay = rePlaytemp;
-          window.rply = rePlaytemp;
+          replays.push(FileManager.computeSaveFile(arrayBuffer));
+          //window.replayer.activeReplay = rePlaytemp;
+          //window.rply = rePlaytemp;
       };
 
       reader.readAsArrayBuffer(file);
@@ -798,7 +823,9 @@
   window.replayer = new RePlayer();
   window.save = FileManager;
   window.rply = rePlaytemp;
+  window.rplys = replays;
   window.createGUI = createGUI;
+  window.record = ReCorder;
   //------------------------------------------------------------------------------------------------------------------------------------------
 
   //GUI
@@ -823,16 +850,20 @@
       'box-shadow': "var(--ss-btn-dark-shadow), var(--ss-btn-dark-bevel) #086e8d, var(--ss-btn-light-bevel) #00ade6 !important"
     }
     replayButton.style = rplyButtonStyle;
+
+    replayButton.onclick = createReplayPopup;
+
     homeScreen.appendChild(replayButton);
     }
-    createReplayPopup();
-
   }
 
-  function createReplayPopup(){
+  function createReplayPopup(replayObject){
+    if(document.getElementById("MOD_REPLAY_LISTPOPUP")) return;
+
     const homeScreen = document.getElementById("home_screen");
     //create base popup container
     const popup = document.createElement("div");
+    popup.id= "MOD_REPLAY_LISTPOPUP";
     popup.className = "popup_window popup_lg centered roundme_md";
     {//close button
       const popupClose = document.createElement("button");
@@ -841,6 +872,12 @@
       const buttonImage = document.createElement("i");
       buttonImage.className = "fas fa-times text_white fa-2x";
       popupClose.appendChild(buttonImage);
+
+      popupClose.onclick = function(){
+        //onclick func
+        homeScreen.removeChild(popup);
+      }
+
       popup.appendChild(popupClose);
     }{//title
       const titleText = document.createElement("h1");
@@ -854,25 +891,38 @@
     popup.appendChild(bg);
     //scroll
     const scroll = document.createElement("div");
-    scroll.className = "news-container f_row v_scroll";
+    scroll.className = "f_row v_scroll border-blue5 roundme_sm common-box-shadow";
     bg.appendChild(scroll);
     //idk if this is neccesary
     const section = document.createElement("section");
-    section.className = "media-panel news-panel media-tab-scroll";
+    section.className = "media-panel news-panel";
     //const testElem = document.createElement("h1"); 
     //testElem.textContent = "test very wide string content WOWOOWOWSSSS SSSSSSS SSSSSSSSSSSSSSS SSSSS SSSSSSSSSSS SSSSS SSSSSSSSS SSS this wis wrapping";
     //section.appendChild(testElem);
 
     section.appendChild(createReplayChild());
+    section.appendChild(createReplayChild());
+
 
     scroll.appendChild(section);
+
+    const warnElem = document.createElement("p");
+    warnElem.textContent = "WARNING! Every replay is lost after page exit, unless downloaded as a file!";
+    popup.appendChild(warnElem);
 
     homeScreen.appendChild(popup);
   }
 
   function createReplayChild(){
     const mainDiv = document.createElement("div");
-    mainDiv.className= "player-challenges-container overflow-hidden"; //shamelessly stolen from challenges...
+    mainDiv.className= "player-challenges-container overflow-hidden";
+
+    mainDiv.style["border-bottom"]= "var(--ss-common-border-width) solid var(--ss-blue3)";
+
+    const splitDiv = document.createElement("div");
+    splitDiv.className = "display-grid grid-auto-flow-column justify-content-around gap-sm";
+
+    const textDiv = document.createElement("div");
 
     //create header
     {
@@ -887,14 +937,52 @@
     const bottomText = document.createElement("p");
     bottomText.textContent = "BOfffffff______ffffffTTOM TexT!";
     bottomText.style.fontSize= ".7em;";
-    mainDiv.appendChild(bottomText);
+    textDiv.appendChild(bottomText);
     }
 
     //TODO: ADD BUTTÓNS
 
+    //delete
+    const deleteButton = document.createElement("button");
+    deleteButton.className = "ss_button btn_red bevel_red box_relative pause-screen-ui text-shadow-none text_blue1";
+    deleteButton.style.top = "50%";
+    deleteButton.style.transform = "translateY(-50%)";
+    deleteButton.style.height = "calc(var(--ss-space-lg)* 3)";
+    deleteButton.style.width = "calc(var(--ss-space-lg)* 3)";
+    deleteButton.title = "delete replay";
+
+    //download
+    const downloadButton = document.createElement("button");
+    downloadButton.className = "ss_button btn_blue bevel_blue box_relative pause-screen-ui text-shadow-none text_blue1";
+    downloadButton.style.top = "50%";
+    downloadButton.style.transform = "translateY(-50%)";
+    downloadButton.style.height = "calc(var(--ss-space-lg)* 3)";
+    downloadButton.style.width = "calc(var(--ss-space-lg)* 3)";
+    downloadButton.title = "download replay";
+
+
+     //download
+    const playButton = document.createElement("button");
+    playButton.className = "ss_button btn_green bevel_green box_relative pause-screen-ui text-shadow-none text_blue1";
+    playButton.style.top = "50%";
+    playButton.style.transform = "translateY(-50%)";
+    playButton.style.height = "calc(var(--ss-space-lg)* 3)";
+    playButton.style.width = "calc(var(--ss-space-lg)* 3)";
+    playButton.title = "play replay";
+
+
     const testElem = document.createElement("h1"); 
     testElem.textContent = "test very wide string content WOWOOWOWSSSS SSSSSSS SSSSSSSSSSSSSSS SSSSS SSSSSSSSSSS SSSSS SSSSSSSSS SSS this wis wrapping";
     //mainDiv.appendChild(testElem);
+
+
+    splitDiv.appendChild(deleteButton);
+    splitDiv.appendChild(textDiv);
+
+    splitDiv.appendChild(downloadButton);
+    splitDiv.appendChild(playButton);
+
+    mainDiv.appendChild(splitDiv);
 
     return mainDiv;
   }
