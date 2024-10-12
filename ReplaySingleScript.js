@@ -249,7 +249,7 @@
        //   H.SCENE + ".render",
        //   `window["${functionNames.retrieveFunctions}"]({${injectionString}},true)||${H.SCENE}.render`,
        // );
-        
+
         //this one might be risky...
         //const beforeNotPlayingInIFramMatch = js.match(/subtree:!0\}\);var [a-zA-Z$_,]+=\(\)=>\{/)
         const beforeNotPlayingInIFramMatch = js.match(/console\.log\("loadResources\(\)"\),[a-zA-Z$_,]+\([a-zA-Z$_,]+\),function\([a-zA-Z$_,]+,[a-zA-Z$_,]+\)\{/); //heh no iframe anymore. eh still gonna keep title bc doesnt matter fuck you
@@ -434,7 +434,7 @@
   }
 
   class ReCorder{
-    
+
     static handlePacketInput(d, t){
       if(Packet3.peekByteStatic(d) ===C.socketReady){
         console.log("SRPLY: detected socketReady commcode, automatically creating new replay!");
@@ -767,7 +767,7 @@
     static initUploadElem(){
       this.inputElem = document.createElement('input');
       this.inputElem.type = 'file';
-      this.inputElem.style.display = 'block'; 
+      this.inputElem.style.display = 'block';
       this.inputElem.accept = ".srply,.bin";
       document.body.appendChild(this.inputElem);
       this.inputElem.addEventListener('change', this.handleFileUpload, false);
@@ -796,12 +796,12 @@
 
     static triggerFileUpload() {
       if(!this.bIsInit) this.initUploadElem();
-      this.inputElem.click(); 
+      this.inputElem.click();
     }
 
     static computeSaveFile(data){
       //assuming data is a bytebuffer
-      const v = new DataView(data); 
+      const v = new DataView(data);
       let offs = 0;
       while(v.getInt8(offs)==0){
         ++offs; //I hate this
@@ -853,7 +853,7 @@
     replayButton.className = "ss_button btn_blue bevel_blue btn_sm pause-screen-btn-spectate";
     replayButton.title = "Replays";
      {
-    //button eye image 
+    //button eye image
     const buttonImage = document.createElement("i");
     buttonImage.className = "fas fa-eye fa-2x";
     replayButton.appendChild(buttonImage);
@@ -930,7 +930,7 @@
     const uploadButton = document.createElement("button");
     uploadButton.textContent = "upload replay...";
     uploadButton.title = "upload replay";
-    uploadButton.onclick = function(){  
+    uploadButton.onclick = function(){
       FileManager.triggerFileUpload();
     };
     popup.appendChild(uploadButton);
@@ -943,7 +943,7 @@
     const section = document.createElement("section");
     section.className = "media-panel news-panel";
     section.id = "MOD_REPLAY_LISTSECTION";
-    //const testElem = document.createElement("h1"); 
+    //const testElem = document.createElement("h1");
     //testElem.textContent = "test very wide string content WOWOOWOWSSSS SSSSSSS SSSSSSSSSSSSSSS SSSSS SSSSSSSSSSS SSSSS SSSSSSSSS SSS this wis wrapping";
     //section.appendChild(testElem);
 
@@ -998,7 +998,7 @@
 
       const metadataString = replay.streamer.length + " packets"
       + " | " + timeConverter(replay.recordStartTime)
-      + " | " + replay.getLengthString();
+      + " | " + replay.getLengthString()
       + " | " + "sv " + replay.saveVersion;
 
 
@@ -1052,7 +1052,7 @@
     };
 
 
-    const testElem = document.createElement("h1"); 
+    const testElem = document.createElement("h1");
     testElem.textContent = "test very wide string content WOWOOWOWSSSS SSSSSSS SSSSSSSSSSSSSSS SSSSS SSSSSSSSSSS SSSSS SSSSSSSSS SSS this wis wrapping";
     //mainDiv.appendChild(testElem);
 
@@ -1068,7 +1068,7 @@
     return mainDiv;
   }
 
-  
+
 //https://stackoverflow.com/questions/847185/convert-a-unix-timestamp-to-time-in-javascript (modified)
 function timeConverter(UNIX_timestamp){
   var a = new Date(UNIX_timestamp);
