@@ -9,7 +9,6 @@
 // @grant        none
 // @run-at       document-start
 // @icon         https://github.com/onlypuppy7/LibertyMutualShellShockers/blob/main/scripticon.jpg?raw=true
-// @require      https://cdn.jsdelivr.net/npm/babylonjs@7.15.0/babylon.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js
 // ==/UserScript==
 
@@ -657,13 +656,13 @@
   let rePlaytemp = new RePlay(); //TODO: make this not be here
 
   class RePlayer {
-    constructor(replay) {
+    static insertReplay(replay) {
       this.activeReplay = replay;
       this.iReplayPacketIdx = 0;
       this.iReplayRelativeTime = 0;
     }
 
-    async resume() {
+    static async resume() {
       bReplaying = true;
       while (
         this.activeReplay &&
@@ -820,7 +819,7 @@
 
   //-----------------------------------------------------------------------------------------------------------------------------------------
   window.bReplaying = false;
-  window.replayer = new RePlayer();
+  window.replayer = RePlayer;
   window.save = FileManager;
   window.rply = rePlaytemp;
   window.rplys = replays;
@@ -857,8 +856,10 @@
     }
   }
 
-  function createReplayPopup(replayObject){
+  function createReplayPopup(){
     if(document.getElementById("MOD_REPLAY_LISTPOPUP")) return;
+    ReCorder.releaseReplay();
+    ReCorder.currentReplay = false;
 
     const homeScreen = document.getElementById("home_screen");
     //create base popup container
@@ -892,19 +893,10 @@
     //scroll
     const scroll = document.createElement("div");
     scroll.className = "f_row v_scroll border-blue5 roundme_sm common-box-shadow";
+    scroll.id = "MOD_REPLAY_LISTSCROLL";
     bg.appendChild(scroll);
-    //idk if this is neccesary
-    const section = document.createElement("section");
-    section.className = "media-panel news-panel";
-    //const testElem = document.createElement("h1"); 
-    //testElem.textContent = "test very wide string content WOWOOWOWSSSS SSSSSSS SSSSSSSSSSSSSSS SSSSS SSSSSSSSSSS SSSSS SSSSSSSSS SSS this wis wrapping";
-    //section.appendChild(testElem);
 
-    section.appendChild(createReplayChild());
-    section.appendChild(createReplayChild());
-
-
-    scroll.appendChild(section);
+    scroll.appendChild(createListSection());
 
     const warnElem = document.createElement("p");
     warnElem.textContent = "WARNING! Every replay is lost after page exit, unless downloaded as a file!";
@@ -913,7 +905,33 @@
     homeScreen.appendChild(popup);
   }
 
-  function createReplayChild(){
+  function createListSection(){
+    //idk if this is neccesary
+    const section = document.createElement("section");
+    section.className = "media-panel news-panel";
+    section.id = "MOD_REPLAY_LISTSECTION";
+    //const testElem = document.createElement("h1"); 
+    //testElem.textContent = "test very wide string content WOWOOWOWSSSS SSSSSSS SSSSSSSSSSSSSSS SSSSS SSSSSSSSSSS SSSSS SSSSSSSSS SSS this wis wrapping";
+    //section.appendChild(testElem);
+
+    //section.appendChild(createReplayChild());
+    //section.appendChild(createReplayChild());
+    replays.forEach(r => {
+      section.appendChild(createReplayChild(r));
+    });
+
+    return section;
+  }
+
+  function rebuildReplayPopupList(){
+    const scroll = document.getElementById("MOD_REPLAY_LISTSCROLL");
+    const sec = document.getElementById("MOD_REPLAY_LISTSECTION");
+    if(!scroll) return;
+    if(sec) scroll.removeChild(sec);
+    scroll.appendChild(createListSection());
+  }
+
+  function createReplayChild(replay){
     const mainDiv = document.createElement("div");
     mainDiv.className= "player-challenges-container overflow-hidden";
 
@@ -927,15 +945,20 @@
     //create header
     {
     const header = document.createElement("h4");
-    header.textContent= "Replay";
+    header.textContent= "Unknown replay";
     header.style.color="#0C576F"; //have to hardcode bc not in class. Too bad!
     header.style.lineHeight = "0em";//align to top
     header.style.margin = ".6em";//prob not the way to do this but eh
     header.style.fontSize = "1.3em"
     mainDiv.appendChild(header);
 
+      const metadataString = replay.streamer.length + " packets"
+      + " | " + timeConverter(replay.recordStartTime);
+
+
+
     const bottomText = document.createElement("p");
-    bottomText.textContent = "BOfffffff______ffffffTTOM TexT!";
+    bottomText.textContent = metadataString;
     bottomText.style.fontSize= ".7em;";
     textDiv.appendChild(bottomText);
     }
@@ -950,6 +973,10 @@
     deleteButton.style.height = "calc(var(--ss-space-lg)* 3)";
     deleteButton.style.width = "calc(var(--ss-space-lg)* 3)";
     deleteButton.title = "delete replay";
+    deleteButton.onclick = function(){
+      replays.splice(replays.indexOf(replay), 1);
+      rebuildReplayPopupList();
+    };
 
     //download
     const downloadButton = document.createElement("button");
@@ -958,8 +985,11 @@
     downloadButton.style.transform = "translateY(-50%)";
     downloadButton.style.height = "calc(var(--ss-space-lg)* 3)";
     downloadButton.style.width = "calc(var(--ss-space-lg)* 3)";
-    downloadButton.title = "download replay";
 
+    downloadButton.title = "download replay";
+    downloadButton.onclick = function(){
+      FileManager.download(replay);
+    };
 
      //download
     const playButton = document.createElement("button");
@@ -969,6 +999,13 @@
     playButton.style.height = "calc(var(--ss-space-lg)* 3)";
     playButton.style.width = "calc(var(--ss-space-lg)* 3)";
     playButton.title = "play replay";
+    playButton.onclick = function(){
+      RePlayer.insertReplay(replay);
+      RePlayer.resume();
+      const home = document.getElementById("home_screen");
+      const pop =document.getElementById("MOD_REPLAY_LISTPOPUP");
+      home.removeChild(pop);
+    };
 
 
     const testElem = document.createElement("h1"); 
@@ -986,4 +1023,19 @@
 
     return mainDiv;
   }
+
+  
+//https://stackoverflow.com/questions/847185/convert-a-unix-timestamp-to-time-in-javascript (modified)
+function timeConverter(UNIX_timestamp){
+  var a = new Date(UNIX_timestamp);
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var year = a.getFullYear();
+  var month = months[a.getMonth()];
+  var date = a.getDate();
+  var hour = a.getHours();
+  var min = a.getMinutes();
+  var sec = a.getSeconds();
+  var time = date + ' ' + month + ' ' + year + ' ' + hour + ':' + min + ':' + sec ;
+  return time;
+}
 })();
