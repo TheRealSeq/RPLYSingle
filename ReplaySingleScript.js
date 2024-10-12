@@ -294,6 +294,9 @@
       console.log(cc);
       console.log(C[cc]);
     });
+    cf("pauseReplay", function(){
+      bReplaying = false;
+    });
   }
 
   function injPreGrab(js, inj) {
@@ -366,7 +369,7 @@
       H.ws +
         "?" +
         leaveMatch[0] +
-        ":console.log('no ws! prob in replay so bye bye!!!')",
+        `:window["${functionNames.pauseReplay}"]()`,
     );
 
     //make respawn not set view to myplayer if in replay
@@ -480,12 +483,23 @@
     constructor() {
       this.streamer = new PacketStreamer();
       this.recordStartTime = Date.now();
+      this.saveVersion = FileManager.SAVE_VERSION;
     }
 
     recordPacket(data, type) {
       this.streamer.addPacket(
         new Packet3(data, Date.now() - this.recordStartTime, type),
       );
+    }
+
+    getLengthString(){
+      const highestTime = this.streamer.getPacket(this.streamer.length-1).time;
+      let minutes = highestTime/1000/60;
+      minutes = Math.floor(minutes);
+      let t =highestTime-(minutes*1000*60);
+      let seconds = t/1000;
+      seconds = Math.floor(seconds);
+      return `${minutes} minutes, ${seconds} seconds`;
     }
   }
 
@@ -653,7 +667,7 @@
     }
   }
 
-  let rePlaytemp = new RePlay(); //TODO: make this not be here
+  //let rePlaytemp = new RePlay(); //TODO: make this not be here
 
   class RePlayer {
     static insertReplay(replay) {
@@ -754,6 +768,7 @@
       this.inputElem = document.createElement('input');
       this.inputElem.type = 'file';
       this.inputElem.style.display = 'block'; 
+      this.inputElem.accept = ".srply,.bin";
       document.body.appendChild(this.inputElem);
       this.inputElem.addEventListener('change', this.handleFileUpload, false);
       this.bIsInit = true;
@@ -773,6 +788,7 @@
           replays.push(FileManager.computeSaveFile(arrayBuffer));
           //window.replayer.activeReplay = rePlaytemp;
           //window.rply = rePlaytemp;
+          rebuildReplayPopupList();
       };
 
       reader.readAsArrayBuffer(file);
@@ -796,6 +812,7 @@
         console.warn("SRPLY: WARNING: the loaded save version number is different than the FM's ver. Stuff might not load correctly! (f: " + ver +", FM: " + this.SAVE_VERSION+")");
       }
       let parsedReplay = new RePlay();
+      parsedReplay.saveVersion = ver;
       parsedReplay.recordStartTime = Number(v.getBigUint64(offs));
       offs+=8;
       //done with head. from now on, it will only be the packets.
@@ -886,6 +903,7 @@
       titleText.textContent = "Replays";
       popup.appendChild(titleText);
     }
+    if(replays.length>0){
     //scroll bg
     const bg = document.createElement("div");
     bg.className = "media-tabs-content f_col";
@@ -901,6 +919,21 @@
     const warnElem = document.createElement("p");
     warnElem.textContent = "WARNING! Every replay is lost after page exit, unless downloaded as a file!";
     popup.appendChild(warnElem);
+    } else{
+      const warnElem = document.createElement("p");
+      warnElem.textContent = "no replays avialable! Join a game to record it, or upload your replay file via the button in the menu!";
+      warnElem.id = "MOD_REPLAY_WARNELEM_NOREPLAY";
+      popup.appendChild(warnElem);
+    }
+
+    //upload button
+    const uploadButton = document.createElement("button");
+    uploadButton.textContent = "upload replay...";
+    uploadButton.title = "upload replay";
+    uploadButton.onclick = function(){  
+      FileManager.triggerFileUpload();
+    };
+    popup.appendChild(uploadButton);
 
     homeScreen.appendChild(popup);
   }
@@ -923,12 +956,23 @@
     return section;
   }
 
+  /**
+   * will do nothing if no popup, but also not error :D
+   */
   function rebuildReplayPopupList(){
     const scroll = document.getElementById("MOD_REPLAY_LISTSCROLL");
     const sec = document.getElementById("MOD_REPLAY_LISTSECTION");
+    const warn = document.getElementById("MOD_REPLAY_WARNELEM_NOREPLAY");
+    if(warn){closeReplayPop(); createReplayPopup()} //this is kinda a hack (?) but rewriting that entire part would be worse!
     if(!scroll) return;
     if(sec) scroll.removeChild(sec);
     scroll.appendChild(createListSection());
+  }
+
+  function closeReplayPop(){
+    const home = document.getElementById("home_screen");
+    const pop =document.getElementById("MOD_REPLAY_LISTPOPUP");
+    home.removeChild(pop);
   }
 
   function createReplayChild(replay){
@@ -953,7 +997,9 @@
     mainDiv.appendChild(header);
 
       const metadataString = replay.streamer.length + " packets"
-      + " | " + timeConverter(replay.recordStartTime);
+      + " | " + timeConverter(replay.recordStartTime)
+      + " | " + replay.getLengthString();
+      + " | " + "sv " + replay.saveVersion;
 
 
 
@@ -1002,9 +1048,7 @@
     playButton.onclick = function(){
       RePlayer.insertReplay(replay);
       RePlayer.resume();
-      const home = document.getElementById("home_screen");
-      const pop =document.getElementById("MOD_REPLAY_LISTPOPUP");
-      home.removeChild(pop);
+      closeReplayPop();
     };
 
 
