@@ -437,6 +437,12 @@
     //inj(respawnTimerBypassMatch[0], respawnTimerBypassMatch[1] + "window.bReplaying||("+ respawnTimerBypassMatch[2] + ")");
 
     //inj("enterSpectatorMode:function(){", "enterSpectatorMode:function(){window.bReplaying||");
+
+    H.actorClass = js.match(/,([a-zA-Z$_,]+)\.prototype\.updateTeam=fun/)[1];
+    console.log(H.actorClass);
+    const actorUpdateCodeMatch = js.match("\\"+H.actorClass+"\\.prototype\\.update=function\\(e\\)\\{");
+    console.log(actorUpdateCodeMatch);
+    inj(actorUpdateCodeMatch[0], actorUpdateCodeMatch[0] + "if(window.bReplaying && window.replayer.bIsPaused)return;");
   }
 
   class ReCorder{
@@ -681,10 +687,18 @@
       this.iReplayPacketIdx = 0;
       this.iReplayRelativeTime = 0;
       this.bIsPaused = true;
+      this.bSkipDesired = false;
+      this.iSkipAmount = 0;
     }
 
     static pause(){
       this.bIsPaused = true;
+    }
+
+    static skip(amount){
+      console.log("skip desired for " + amount);
+      this.iSkipAmount = amount;
+      this.bSkipDesired = true;
     }
 
     static async resume() {
@@ -701,36 +715,66 @@
         //console.log(packet);
         const delayDur = packet.time - this.iReplayRelativeTime;
         //console.log("sleep for: " + delayDur);
-        if (delayDur > 0) await sleep(delayDur);
-        if (
-          packet.data &&
-          packet.peekByte() != C.syncMe &&
-          packet.peekByte() != C.hitMe &&
-          packet.peekByte() != C.socketReady //&&
-          //!bannedCommCodes.includes(packet.peekByte())
-        ) {
-          //I want to kill myself :(
-          //yes I know that that check up there ^^^^^^^^^^^^ doesn't account for any packet after the first one, but eh...
-          try{
-          switch (packet.type) {
-            case 1:
-              //console.log("on1");
-              ss.onMessage(packet.data);
-              break;
-            case 2:
-              //console.log("on2");
-              ss.onMessage2(packet.data);
-              break;
-          }
-        }catch(e){
-            console.warn("playback errored. " + e);
-            console.error(e);
-            console.log("this is error should not be the end of the world. Report to creator if playback breaks!");
-          }
+        if(delayDur < 0){
+          this.rePlayPacket(packet);
+          continue;
         }
+        if (delayDur > 0) await sleep(delayDur);
+
+        this.rePlayPacket(packet);
 
         this.iReplayRelativeTime = packet.time; //set relative time location to match packet.
+        if(this.bSkipDesired){
+          this.bSkipDesired = false;
+          this.iReplayRelativeTime+=this.iSkipAmount;
+          if(this.iSkipAmount<0) this.iReplayPacketIdx = this.findPacketIdxForTime(this.iReplayRelativeTime);
+        }
       }
+    }
+
+    static rePlayPacket(packet){
+      if (
+        packet.data &&
+        packet.peekByte() != C.syncMe &&
+        packet.peekByte() != C.hitMe &&
+        packet.peekByte() != C.socketReady //&&
+        //!bannedCommCodes.includes(packet.peekByte())
+      ) {
+        //I want to kill myself :(
+        //yes I know that that check up there ^^^^^^^^^^^^ doesn't account for any packet after the first one, but eh...
+        try{
+        switch (packet.type) {
+          case 1:
+            //console.log("on1");
+            ss.onMessage(packet.data);
+            break;
+          case 2:
+            //console.log("on2");
+            ss.onMessage2(packet.data);
+            break;
+        }
+      }catch(e){
+          console.warn("playback errored. " + e);
+          console.error(e);
+          console.log("this is error should not be the end of the world. Report to creator if playback breaks!");
+        }
+      }
+    }
+
+    static findPacketIdxForTime(time){
+      const streamer = this.activeReplay.streamer;
+      let num = streamer.getPacket(this.iReplayPacketIdx).time;
+      let idx = this.iReplayPacketIdx;
+      if(num>time){
+        while(num>time){
+          num = streamer.getPacket(--idx).time;
+        }
+      } else{
+        while(num<time){
+          num = streamer.getPacket(++idx).time;
+        }
+      }
+      return idx;
     }
   }
 
@@ -855,6 +899,30 @@
   }
 
   }
+
+  document.addEventListener("keydown", function (event) {
+    console.log(event.key);
+    const key = event.key.toLowerCase();
+    if(key=="p"){
+      if(bReplaying && RePlayer){
+        if(RePlayer.bIsPaused){
+          RePlayer.resume();
+        } else{
+          RePlayer.pause();
+        }
+      }
+    }
+    if(key=="arrowright"){
+      if(bReplaying && RePlayer){
+        RePlayer.skip(5000);
+      }
+    }
+    if(key=="arrowleft"){
+      if(bReplaying && RePlayer){
+        RePlayer.skip(-5000);
+      }
+    }
+});
 
   //https://stackoverflow.com/questions/951021/what-is-the-javascript-version-of-sleep
   function sleep(ms) {
