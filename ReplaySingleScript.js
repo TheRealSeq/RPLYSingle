@@ -505,7 +505,7 @@
       let t =highestTime-(minutes*1000*60);
       let seconds = t/1000;
       seconds = Math.floor(seconds);
-      return `${minutes} minutes, ${seconds} seconds`;
+      return `${minutes}:${seconds}`;
     }
   }
 
@@ -711,6 +711,7 @@
         ) {
           //I want to kill myself :(
           //yes I know that that check up there ^^^^^^^^^^^^ doesn't account for any packet after the first one, but eh...
+          try{
           switch (packet.type) {
             case 1:
               //console.log("on1");
@@ -720,6 +721,11 @@
               //console.log("on2");
               ss.onMessage2(packet.data);
               break;
+          }
+        }catch(e){
+            console.warn("playback errored. " + e);
+            console.error(e);
+            console.log("this is error should not be the end of the world. Report to creator if playback breaks!");
           }
         }
 
@@ -1055,12 +1061,24 @@
       + " | " + replay.getLengthString()
       + " | " + "sv " + replay.saveVersion;
 
+      const l1Text ="duration: "+replay.getLengthString() +", " + truncateNum(replay.streamer.length) +" packets";
+      const l2Text ="recorded at: "+timeConverter(replay.recordStartTime) +", sv " + replay.saveVersion;
+
 
 
     const bottomText = document.createElement("p");
     bottomText.textContent = metadataString;
     bottomText.style.fontSize= ".7em;";
-    textDiv.appendChild(bottomText);
+    //textDiv.appendChild(bottomText);
+    const l1 = document.createElement("p");
+    l1.textContent = l1Text;
+    l1.style.margin = "10px"
+    textDiv.appendChild(l1);
+
+    const l2 = document.createElement("p");
+    l2.textContent = l2Text;
+    l2.style.margin = "10px"
+    textDiv.appendChild(l2);
     }
 
     //TODO: ADD BUTTÓNS
@@ -1156,4 +1174,11 @@ function timeConverter(UNIX_timestamp){
   var time = date + ' ' + month + ' ' + year + ' ' + hour + ':' + min + ':' + sec ;
   return time;
 }
+
+//this returns a string!
+function truncateNum(num){
+  if(num>=1000&&num<1000000)return (Math.round(num*0.01)*0.1).toFixed(1)+"k"; 
+  if(num>=1000000)return (Math.round(num*0.00001)*0.1).toFixed(1);+"m"; 
+  return num;
+} 
 })();
