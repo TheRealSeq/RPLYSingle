@@ -17,6 +17,7 @@
   let H = {}; //deobf names. Fuck you puppy.
   let C = {}; //commcodes
   let ss = {}; // fuck you puppy
+  let deleteImage, downloadImage, piperImage, playImage; //GUI Stuff. Need to do here bc JS stupid. GRRRR. fuck you puppy
   {
     LM();
     function LM() {
@@ -431,6 +432,11 @@
         makePlayerPositionEqualCameraPositionForSomeFUCKINGReasonMatch[0] +
         "1==1):1==1,",
     );
+
+    const respawnTimerBypassMatch = js.match(/(vueApp\.game\.respawnTime=Math\.min\([a-zA-Z$_,]+,[a-zA-Z$_,]+\),)([a-zA-Z$_,]+<=0&&[a-zA-Z$_,]+)/);
+    //inj(respawnTimerBypassMatch[0], respawnTimerBypassMatch[1] + "window.bReplaying||("+ respawnTimerBypassMatch[2] + ")");
+
+    //inj("enterSpectatorMode:function(){", "enterSpectatorMode:function(){window.bReplaying||");
   }
 
   class ReCorder{
@@ -674,14 +680,21 @@
       this.activeReplay = replay;
       this.iReplayPacketIdx = 0;
       this.iReplayRelativeTime = 0;
+      this.bIsPaused = true;
+    }
+
+    static pause(){
+      this.bIsPaused = true;
     }
 
     static async resume() {
+      this.bIsPaused = false;
       bReplaying = true;
       while (
         this.activeReplay &&
         this.iReplayPacketIdx < this.activeReplay.streamer.length &&
-        bReplaying
+        bReplaying &&
+        !this.bIsPaused
       ) {
         const packet = //packets.shift(); //grab first packet);
           this.activeReplay.streamer.getPacket(this.iReplayPacketIdx++);
@@ -712,7 +725,6 @@
 
         this.iReplayRelativeTime = packet.time; //set relative time location to match packet.
       }
-      bReplaying = false;
     }
   }
 
@@ -783,12 +795,14 @@
 
       const reader = new FileReader();
       reader.onload = function(e) {
+        const load = createUploadLoadingScreen();
           const arrayBuffer = e.target.result;
           //console.log(arrayBuffer);
           replays.push(FileManager.computeSaveFile(arrayBuffer));
           //window.replayer.activeReplay = rePlaytemp;
           //window.rply = rePlaytemp;
           rebuildReplayPopupList();
+          load.parnet.removeChild(load.pop);
       };
 
       reader.readAsArrayBuffer(file);
@@ -799,7 +813,8 @@
       this.inputElem.click();
     }
 
-    static computeSaveFile(data){
+    static  computeSaveFile(data){
+      try{
       //assuming data is a bytebuffer
       const v = new DataView(data);
       let offs = 0;
@@ -825,7 +840,13 @@
         parsedReplay.streamer.addPacket(allPacks[i]);
       }
       return parsedReplay;
+
+    }catch(e){
+      console.error("error in file parsing. " + e);
+      console.error(e);
     }
+
+  }
 
   }
 
@@ -838,7 +859,7 @@
   window.bReplaying = false;
   window.replayer = RePlayer;
   window.save = FileManager;
-  window.rply = rePlaytemp;
+  //window.rply = rePlaytemp;
   window.rplys = replays;
   window.createGUI = createGUI;
   window.record = ReCorder;
@@ -846,6 +867,39 @@
 
   //GUI
   function createGUI(){
+    //preload images
+    piperImage = document.createElement("img");
+    piperImage.src = "https://github.com/TheRealSeq/Media/blob/main/IffermoonPiperBattle.png?raw=true";
+    piperImage.style.width = "calc(calc(var(--ss-space-lg)* 3)*0.90)";
+    piperImage.style.height = "calc(calc(var(--ss-space-lg)* 3)*0.90)";
+    piperImage.style.top = "0";
+    piperImage.style.left = "0";
+    piperImage.style.position = "absolute";
+
+    deleteImage = document.createElement("img");
+    deleteImage.src = "https://github.com/TheRealSeq/Media/blob/main/SRPLY/delMiniIconII.png?raw=true";
+    deleteImage.style.width = "calc(calc(var(--ss-space-lg)* 3)*0.90)";
+    deleteImage.style.height = "calc(calc(var(--ss-space-lg)* 3)*0.90)";
+    deleteImage.style.top = "0";
+    deleteImage.style.left = "0";
+    deleteImage.style.position = "absolute";
+
+    downloadImage = document.createElement("img");
+    downloadImage.src = "https://github.com/TheRealSeq/Media/blob/main/SRPLY/downMiniIcon.png?raw=true";
+    downloadImage.style.width = "calc(calc(var(--ss-space-lg)* 3)*0.90)";
+    downloadImage.style.height = "calc(calc(var(--ss-space-lg)* 3)*0.90)";
+    downloadImage.style.top = "0";
+    downloadImage.style.left = "0";
+    downloadImage.style.position = "absolute";
+
+    playImage = document.createElement("img");
+    playImage.src = "https://github.com/TheRealSeq/Media/blob/main/SRPLY/playMiniIcon.png?raw=true";
+    playImage.style.width = "calc(calc(var(--ss-space-lg)* 3)*0.90)";
+    playImage.style.height = "calc(calc(var(--ss-space-lg)* 3)*0.90)";
+    playImage.style.top = "0";
+    playImage.style.left = "0";
+    playImage.style.position = "absolute";
+
     //IK I should probably append to a child but eh doesn't matter, does it?
     const homeScreen = document.getElementById("home_screen");
     { //button
@@ -1023,9 +1077,7 @@
       replays.splice(replays.indexOf(replay), 1);
       rebuildReplayPopupList();
     };
-    const delIcon = document.createElement("img");
-    delIcon.scr = "https://github.com/TheRealSeq/Media/blob/main/SRPLY/del.png?raw=true";
-    deleteButton.appendChild(delIcon);
+    deleteButton.appendChild(deleteImage.cloneNode());
 
     //download
     const downloadButton = document.createElement("button");
@@ -1038,9 +1090,7 @@
     downloadButton.onclick = function(){
       FileManager.download(replay);
     };
-    const downIcon = document.createElement("img");
-    downIcon.scr = "https://github.com/TheRealSeq/Media/blob/main/SRPLY/down.png?raw=true";
-    downloadButton.appendChild(downIcon);
+    downloadButton.appendChild(downloadImage.cloneNode());
 
      //download
     const playButton = document.createElement("button");
@@ -1055,22 +1105,41 @@
       RePlayer.resume();
       closeReplayPop();
     };
+    if(Math.random()<0.05)playButton.appendChild(piperImage.cloneNode()); else playButton.appendChild(playImage.cloneNode());
 
 
     const testElem = document.createElement("h1");
     testElem.textContent = "test very wide string content WOWOOWOWSSSS SSSSSSS SSSSSSSSSSSSSSS SSSSS SSSSSSSSSSS SSSSS SSSSSSSSS SSS this wis wrapping";
     //mainDiv.appendChild(testElem);
 
-
-    splitDiv.appendChild(deleteButton);
+    splitDiv.appendChild(playButton);
     splitDiv.appendChild(textDiv);
 
     splitDiv.appendChild(downloadButton);
-    splitDiv.appendChild(playButton);
+    splitDiv.appendChild(deleteButton);
+
 
     mainDiv.appendChild(splitDiv);
 
     return mainDiv;
+  }
+
+  function createUploadLoadingScreen(){
+    const mainDiv = document.createElement("div");
+    mainDiv.id ="MOD_REPLAY_UPLOAD_LOADSCREEN";
+    mainDiv.className = "popup_window popup_lg centered roundme_md";
+    const header = document.createElement("h1");
+    header.textContent = "uploading...";
+    const l1 = document.createElement("p");
+    l1.textContent = "parsing replay";
+    const l2 = document.createElement("p");
+    l2.textContent = "please wait.";
+    mainDiv.appendChild(header);
+    mainDiv.appendChild(l1);
+    mainDiv.appendChild(l2);
+    const app = document.getElementById("app");
+    app.appendChild(mainDiv); 
+    return {pop: mainDiv, parnet: app};
   }
 
 
