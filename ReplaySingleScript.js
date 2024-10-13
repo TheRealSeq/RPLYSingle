@@ -1123,7 +1123,7 @@
       RePlayer.resume();
       closeReplayPop();
     };
-    if(Math.random()<0.05)playButton.appendChild(piperImage.cloneNode()); else playButton.appendChild(playImage.cloneNode());
+    if(Math.random()<0.05){playButton.appendChild(piperImage.cloneNode()); }else{ playButton.appendChild(playImage.cloneNode());}
 
 
     const testElem = document.createElement("h1");
