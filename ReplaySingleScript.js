@@ -541,7 +541,7 @@
 
     loadOnDemand(packetIdx) {
       const location = Math.floor(packetIdx / this.chunkSize) || 0;
-      console.log(location);
+      //console.log(location);
       if (location != this.loadedChunk) {
         this.releaseCurrent();
         this.loadChunk(location);
@@ -901,7 +901,7 @@
   }
 
   document.addEventListener("keydown", function (event) {
-    console.log(event.key);
+    //console.log(event.key);
     const key = event.key.toLowerCase();
     if(key=="p"){
       if(bReplaying && RePlayer){
