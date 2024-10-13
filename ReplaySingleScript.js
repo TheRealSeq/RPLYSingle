@@ -1023,6 +1023,9 @@
       replays.splice(replays.indexOf(replay), 1);
       rebuildReplayPopupList();
     };
+    const delIcon = document.createElement("img");
+    delIcon.scr = "https://github.com/TheRealSeq/Media/blob/main/SRPLY/del.png?raw=true";
+    deleteButton.appendChild(delIcon);
 
     //download
     const downloadButton = document.createElement("button");
@@ -1031,11 +1034,13 @@
     downloadButton.style.transform = "translateY(-50%)";
     downloadButton.style.height = "calc(var(--ss-space-lg)* 3)";
     downloadButton.style.width = "calc(var(--ss-space-lg)* 3)";
-
     downloadButton.title = "download replay";
     downloadButton.onclick = function(){
       FileManager.download(replay);
     };
+    const downIcon = document.createElement("img");
+    downIcon.scr = "https://github.com/TheRealSeq/Media/blob/main/SRPLY/down.png?raw=true";
+    downloadButton.appendChild(downIcon);
 
      //download
     const playButton = document.createElement("button");
