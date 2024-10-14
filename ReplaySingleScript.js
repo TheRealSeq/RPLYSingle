@@ -459,12 +459,36 @@
     inj('.prototype.show=function(){if(document.getElementById("reticleContainer")', '.prototype.show=function(){if(window.bReplaying)return;if(document.getElementById("reticleContainer")');
 
     inj(".prototype.showDot=function(){", ".prototype.showDot=function(){if(window.bReplaying)return;");
+
+    //myplayer update.
+    const setControlkeysToMeMatch= js.match("(\\|\\|this\\.id!=" + H.meid + ")(\\|\\|)");
+    inj(setControlkeysToMeMatch[0], setControlkeysToMeMatch[1] + "||window.bReplaying" + setControlkeysToMeMatch[2]);
+
+    H.controlkeysPlayerVar = js.match("this\\.([a-zA-Z$_,]+)="+H.CONTROLKEYS)[1];
+
+    const playerUpdateMatch = js.match(H._playerThing + "\\.prototype\\."+H._update+"=function\\([a-zA-Z$_,]+\\)\\{");  
+    //inj(playerUpdateMatch[0], playerUpdateMatch[0]+"if(this.id==" + H.meid+"&&!window.bReplaying){this." + H.controlkeysPlayerVar + "=" + H.CONTROLKEYS+";window.recordMyplayer(this);}");
+
+
+  }
+  //doing this here because where else?
+  window.recordMyplayer = function(player){
+    const buffer = new ArrayBuffer(this.calcByteArrayLength(packets));
+    const v = new DataView(buffer);
+    let offs = 0;
+    v.setUint8(offs, player[H.controlkeysPlayerVar]);
+    offs += 1;
+    v.setFloat32(offs, player[H.yaw]);
+    offs+=4;
+    v.setFloat32(offs, player[H.pitch]);
+    offs+=4;
+
   }
 
   class ReCorder{
 
     static handlePacketInput(d, t){
-      if(Packet3.peekByteStatic(d) ===C.socketReady){
+      if(Packet3.peekByteStatic(d) ===C.socketReady &&t<3){
         console.log("SRPLY: detected socketReady commcode, automatically creating new replay!");
         this.releaseReplay();
         this.currentReplay = new RePlay();
