@@ -999,6 +999,7 @@
 
     homeScreen.appendChild(replayButton);
     }
+    createIngameUI();
   }
 
   function createReplayPopup(){
@@ -1064,6 +1065,7 @@
     popup.appendChild(uploadButton);
 
     homeScreen.appendChild(popup);
+
   }
 
   function createListSection(){
@@ -1224,8 +1226,31 @@
     mainDiv.appendChild(l1);
     mainDiv.appendChild(l2);
     const app = document.getElementById("app");
-    app.appendChild(mainDiv); 
+    app.appendChild(mainDiv);
     return {pop: mainDiv, parnet: app};
+  }
+
+  function createIngameUI(){
+    const app = //document.getElementById("account_panel");
+    document.getElementsByClassName("paused-game-ui z-index-1 centered_x fullwidth")[0];
+    const rePlayIngameContainer = document.createElement("div");
+    {//progress
+      const progressContainer = document.createElement("div");
+      progressContainer.style.position = "absolute";
+      progressContainer.style.bottom = "var(--ss-space-lg)";
+      progressContainer.className = "centered_x";
+      const progressText = document.createTextNode("xx/yy");
+      progressText.id = "MOD_REPLAY_PROGRESSTEXT";
+      const bar = document.createElement("progress");
+      bar.id = "MOD_REPLAY_PROGRESS";
+
+      progressContainer.appendChild(progressText);
+      progressContainer.appendChild(bar);
+      rePlayIngameContainer.appendChild(progressContainer);
+    }
+
+
+    app.appendChild(rePlayIngameContainer);
   }
 
 
@@ -1245,8 +1270,8 @@ function timeConverter(UNIX_timestamp){
 
 //this returns a string!
 function truncateNum(num){
-  if(num>=1000&&num<1000000)return (Math.round(num*0.01)*0.1).toFixed(1)+"k"; 
-  if(num>=1000000)return (Math.round(num*0.00001)*0.1).toFixed(1);+"m"; 
+  if(num>=1000&&num<1000000)return (Math.round(num*0.01)*0.1).toFixed(1)+"k";
+  if(num>=1000000)return (Math.round(num*0.00001)*0.1).toFixed(1);+"m";
   return num;
-} 
+}
 })();
