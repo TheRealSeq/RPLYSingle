@@ -18,6 +18,7 @@
   let C = {}; //commcodes
   let ss = {}; // fuck you puppy
   let deleteImage, downloadImage, piperImage, playImage; //GUI Stuff. Need to do here bc JS stupid. GRRRR. fuck you puppy
+  let timeProgressText;
   {
     LM();
     function LM() {
@@ -444,6 +445,20 @@
     const actorUpdateCodeMatch = js.match("\\"+H.actorClass+"\\.prototype\\.update=function\\(e\\)\\{");
     console.log(actorUpdateCodeMatch);
     inj(actorUpdateCodeMatch[0], actorUpdateCodeMatch[0] + "if(window.bReplaying && window.replayer.bIsPaused)return;");
+
+    //const updateGameUIForWhenMeIsValidMatch = js.match(/(\)\}[a-zA-Z$_,]+)(&&\([a-zA-Z$_,]+\.update\([a-zA-Z$_,]+\),[a-zA-Z$_,]+\.update)/);
+    //inj(updateGameUIForWhenMeIsValidMatch[0], updateGameUIForWhenMeIsValidMatch[1] +"&&!window.bReplaying"+updateGameUIForWhenMeIsValidMatch[2]);
+    //inj('document.getElementById("reticleContainer").className=""', 'document.getElementById("reticleContainer").className=true?"hideme":""');
+
+    //make various UI elements invisible during replay
+    const hm1Match = js.match(/(\.hideDot\(\),)([a-zA-Z$_,]+\.hitMarkers)/);
+    const hm2Match = js.match(/(=new [a-zA-Z$_,]+\([a-zA-Z$_,]+\),)([a-zA-Z$_,]+\.hitMarkers)/);
+    inj(hm1Match[0], hm1Match[1] + "(!window.bReplaying&&" +hm1Match[2] + ")");
+    inj(hm2Match[0], hm2Match[1] + "(!window.bReplaying&&" +hm2Match[2] + ")");
+
+    inj('.prototype.show=function(){if(document.getElementById("reticleContainer")', '.prototype.show=function(){if(window.bReplaying)return;if(document.getElementById("reticleContainer")');
+
+    inj(".prototype.showDot=function(){", ".prototype.showDot=function(){if(window.bReplaying)return;");
   }
 
   class ReCorder{
@@ -497,6 +512,7 @@
       this.streamer = new PacketStreamer();
       this.recordStartTime = Date.now();
       this.saveVersion = FileManager.SAVE_VERSION;
+      this.lastPacketCache = null;
     }
 
     recordPacket(data, type) {
@@ -507,16 +523,12 @@
 
     getLengthString(){
       const highestTime = this.getTimeLength();
-      let minutes = highestTime/1000/60;
-      minutes = Math.floor(minutes);
-      let t =highestTime-(minutes*1000*60);
-      let seconds = t/1000;
-      seconds = Math.floor(seconds);
-      return `${minutes}:${seconds}`;
+      return getTimeString(highestTime);
     }
 
     getTimeLength(){
-      return this.streamer.getPacket(this.streamer.length-1).time;
+      if(!this.lastPacketCache) this.lastPacketCache = this.streamer.getPacket(this.streamer.length-1);
+      return this.lastPacketCache.time;
     }
   }
 
@@ -731,7 +743,7 @@
 
         this.iReplayRelativeTime = packet.time; //set relative time location to match packet.
         //update ui progress
-        setUIProgress(this.iReplayRelativeTime, this.activeReplay.getTimeLength());
+        setUIProgress(this.iReplayRelativeTime, this.activeReplay.getTimeLength(), this.iReplayPacketIdx, this.activeReplay.streamer.length);
 
         if(this.bSkipDesired){
           this.bSkipDesired = false;
@@ -1246,17 +1258,26 @@
     const rePlayIngameContainer = document.createElement("div");
     {//progress
       const progressContainer = document.createElement("div");
-      progressContainer.style.position = "absolute";
+      progressContainer.style.position = "flex";
       progressContainer.style.bottom = "var(--ss-space-lg)";
       progressContainer.className = "centered_x";
       progressContainer.id = "MOD_REPLAY_UI_CONTAINER";
       progressContainer.style.display = "none";
-      const progressText = document.createTextNode("xx/yy");
-      progressText.id = "MOD_REPLAY_PROGRESSTEXT";
+      //const progressText = document.createTextNode("xx/yy");
+      //const progressText = document.createElement("h5");
+      const timeContainer = document.createElement("span");
+      timeContainer.style.color = "#ffffff";
+      //timeContainer.className = "centered_x";
+      timeContainer.style.textAlign = "center";
+      timeProgressText = document.createTextNode("xx/yy");
+      timeProgressText.id = "MOD_REPLAY_PROGRESSTEXT";
       const bar = document.createElement("progress");
+      bar.className = "centered_x";
       bar.id = "MOD_REPLAY_PROGRESS";
+      bar.style.bottom = "var(--ss-space-lg)";
 
-      progressContainer.appendChild(progressText);
+      timeContainer.appendChild(timeProgressText);
+      progressContainer.appendChild(timeContainer);
       progressContainer.appendChild(bar);
       rePlayIngameContainer.appendChild(progressContainer);
     }
@@ -1265,17 +1286,23 @@
     app.appendChild(rePlayIngameContainer);
   }
 
-  function setUIProgress(current, max){
+  function setUIProgress(current, max, pIdx, maxPIdx){
     const progress = document.getElementById("MOD_REPLAY_PROGRESS");
-    const text = document.getElementById("MOD_REPLAY_PROGRESSTEXT");
+    //const text = document.getElementById("MOD_REPLAY_PROGRESSTEXT");
     progress.max = max;
     progress.value = current;
     //text.nodeValue = current + "/" + max;
+    //text.textContent = current + "/" + max;
+    let newString = getTimeString(current) + "/" + getTimeString(max);
+    if(pIdx && maxPIdx) newString+= " (packets: " + truncateNum(pIdx) + "/" + truncateNum(maxPIdx) + ")";
+    timeProgressText.nodeValue =// getTimeString(current) + "/" + getTimeString(max)// + " (" + ;
+    newString;
   }
 
   function setReplayUIVis(visible){
     const container = document.getElementById("MOD_REPLAY_UI_CONTAINER");
     container.style.display = visible ? "block" : "none";
+    //assuming we can hide the game UI elements here too
   }
 
 
@@ -1298,5 +1325,16 @@ function truncateNum(num){
   if(num>=1000&&num<1000000)return (Math.round(num*0.01)*0.1).toFixed(1)+"k";
   if(num>=1000000)return (Math.round(num*0.00001)*0.1).toFixed(1);+"m";
   return num;
+}
+
+function getTimeString(millis){
+  let minutes = millis/1000/60;
+  minutes = Math.floor(minutes);
+  let t =millis-(minutes*1000*60);
+  let seconds = t/1000;
+  seconds = Math.floor(seconds);
+  const msFraction = millis%1000;
+  //if(minutes<1) return seconds+"s";
+  return `${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}.${String(msFraction).padStart(3,'0')}`;
 }
 })();
