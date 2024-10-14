@@ -295,8 +295,9 @@
       console.log(cc);
       console.log(C[cc]);
     });
-    cf("pauseReplay", function(){
+    cf("endReplay", function(){
       bReplaying = false;
+      setReplayUIVis(false);
     });
   }
 
@@ -370,7 +371,7 @@
       H.ws +
         "?" +
         leaveMatch[0] +
-        `:window["${functionNames.pauseReplay}"]()`,
+        `:window["${functionNames.endReplay}"]()`,
     );
 
     //make respawn not set view to myplayer if in replay
@@ -505,13 +506,17 @@
     }
 
     getLengthString(){
-      const highestTime = this.streamer.getPacket(this.streamer.length-1).time;
+      const highestTime = this.getTimeLength();
       let minutes = highestTime/1000/60;
       minutes = Math.floor(minutes);
       let t =highestTime-(minutes*1000*60);
       let seconds = t/1000;
       seconds = Math.floor(seconds);
       return `${minutes}:${seconds}`;
+    }
+
+    getTimeLength(){
+      return this.streamer.getPacket(this.streamer.length-1).time;
     }
   }
 
@@ -704,6 +709,7 @@
     static async resume() {
       this.bIsPaused = false;
       bReplaying = true;
+      setReplayUIVis(true);
       while (
         this.activeReplay &&
         this.iReplayPacketIdx < this.activeReplay.streamer.length &&
@@ -724,6 +730,9 @@
         this.rePlayPacket(packet);
 
         this.iReplayRelativeTime = packet.time; //set relative time location to match packet.
+        //update ui progress
+        setUIProgress(this.iReplayRelativeTime, this.activeReplay.getTimeLength());
+
         if(this.bSkipDesired){
           this.bSkipDesired = false;
           this.iReplayRelativeTime+=this.iSkipAmount;
@@ -937,6 +946,7 @@
   window.rplys = replays;
   window.createGUI = createGUI;
   window.record = ReCorder;
+  window.setReplayUIVis = setReplayUIVis;
   //------------------------------------------------------------------------------------------------------------------------------------------
 
   //GUI
@@ -1239,6 +1249,8 @@
       progressContainer.style.position = "absolute";
       progressContainer.style.bottom = "var(--ss-space-lg)";
       progressContainer.className = "centered_x";
+      progressContainer.id = "MOD_REPLAY_UI_CONTAINER";
+      progressContainer.style.display = "none";
       const progressText = document.createTextNode("xx/yy");
       progressText.id = "MOD_REPLAY_PROGRESSTEXT";
       const bar = document.createElement("progress");
@@ -1251,6 +1263,19 @@
 
 
     app.appendChild(rePlayIngameContainer);
+  }
+
+  function setUIProgress(current, max){
+    const progress = document.getElementById("MOD_REPLAY_PROGRESS");
+    const text = document.getElementById("MOD_REPLAY_PROGRESSTEXT");
+    progress.max = max;
+    progress.value = current;
+    //text.nodeValue = current + "/" + max;
+  }
+
+  function setReplayUIVis(visible){
+    const container = document.getElementById("MOD_REPLAY_UI_CONTAINER");
+    container.style.display = visible ? "block" : "none";
   }
 
 
