@@ -205,6 +205,14 @@
           "hitMeHardBoiled",
           "nononono",
         );
+
+        //do map array
+        const mapRegex = /var ([a-zA-Z$_,]+)=\[\{filename:/;
+        const mapMatch = js.match(mapRegex);
+        console.log("mapmatch");
+        console.log(mapMatch);
+        H.MAPS = mapMatch[1];
+
         //onMessage1Mod = onMessage1Mod.originalReplace()
         console.log("meid: " + H.meid);
         onMessage1Mod = onMessage1Mod.originalReplaceAll(H.meid, "-1");
@@ -467,7 +475,7 @@
 
     //myplayer update.
     const setControlkeysToMeMatch= js.match("(\\|\\|this\\.id!=" + H.meid + ")(\\|\\|)");
-    inj(setControlkeysToMeMatch[0], setControlkeysToMeMatch[1] + "||window.bReplaying" + setControlkeysToMeMatch[2]);
+    //inj(setControlkeysToMeMatch[0], setControlkeysToMeMatch[1] + "||window.bReplaying" + setControlkeysToMeMatch[2]);
 
     H.controlkeysPlayerVar = js.match("this\\.([a-zA-Z$_,]+)="+H.CONTROLKEYS)[1];
 
@@ -488,6 +496,13 @@
     v.setFloat32(offs, player[H.pitch]);
     offs+=4;
 
+  }
+
+  function findMapIdx(fileName) {
+    for(let i = 0; i<ss.MAPS.length; ++i){
+      if(ss.MAPS[i].filename == fileName) return i;
+    }
+    return -1;
   }
 
   class ReCorder{
@@ -542,12 +557,24 @@
       this.recordStartTime = Date.now();
       this.saveVersion = FileManager.SAVE_VERSION;
       this.lastPacketCache = null;
+      this.map = "UNKNOWNMAP";
+      this.mapIdx = -1;
     }
 
     recordPacket(data, type) {
+      const pack =  new Packet3(data, Date.now() - this.recordStartTime, type);
       this.streamer.addPacket(
-        new Packet3(data, Date.now() - this.recordStartTime, type),
+        pack,
       );
+      //record map
+      if(pack.peekByte() == ss.SERVERCODES.gameJoined){
+        const d = pack.getDataAsByteArray();
+        let idx = 1+1+1+1; //commcode + meId +myTeam +gameType 
+        let mapIdx = d[idx];
+        this.mapIdx = mapIdx;
+        this.map = ss.MAPS[mapIdx].filename;
+        console.log("found map: " + mapIdx + " (" + this.map + ")");
+      }
     }
 
     getLengthString(){
@@ -829,7 +856,7 @@
   }
 
   class FileManager {
-    static SAVE_VERSION = 2;
+    static SAVE_VERSION = 3;
 
     static createFileBytes(replay) {
       replay.streamer.releaseCurrent();
@@ -844,13 +871,39 @@
       offs++;
       v.setBigUint64(offs, BigInt(replay.recordStartTime)); //record start time
       offs += 8;
+      //new in 3: map name
+      let x = this.writeString(v, replay.map, offs);
+      offs=x;
       //write body
       //there has to be a better way to do this but cba
       for (let i = 0; i < bodyComp.length; i++) {
-        v.setUint8(offs+i, bodyComp[i]) //= bodyComp[i];
+        v.setUint8(offs+i, bodyComp[i]) //= bodyComp[i];    
       }
       //console.log(content2);
       return content2;
+    }
+
+    //returns offset of string write
+    static writeString(v, string, offs){
+      //let offs = 0;
+      v.setUint8(offs, string.length);
+      offs++;
+      for(let i = 0; i<string.length; ++i){
+        v.setUint8(offs, string.charCodeAt(i));
+        offs++;
+      }
+      return offs;
+    }
+
+    static readString(v, offs){
+      let len = v.getUint8(offs);
+      let parsedString = "";
+      offs++;
+      for(let i = 0; i<len; ++i){
+        parsedString+= String.fromCharCode(v.getUint8(offs));
+        offs++;
+      }
+      return {parsedString, offs};
     }
 
     static download(replay){
@@ -873,6 +926,8 @@
     static getHeadLength(replay) {
       let val = 1; //version
       val += 8; //replayStartTime: biguint64
+      val+=1; //map string len
+      val+=replay.map.length; //map string char bytes
       return val;
     }
 
@@ -930,6 +985,14 @@
       parsedReplay.saveVersion = ver;
       parsedReplay.recordStartTime = Number(v.getBigUint64(offs));
       offs+=8;
+      //map
+      if(this.SAVE_VERSION >=3){
+        let res = this.readString(v, offs);
+        offs = res.offs;
+        parsedReplay.map = res.parsedString;
+        parsedReplay.mapIdx = findMapIdx(res.parsedString);
+        console.log("found map " + parsedReplay.map + " with idx " + parsedReplay.mapIdx);
+      }
       //done with head. from now on, it will only be the packets.
       const packDatArray = new Uint8Array(v.byteLength-offs);
       for(let i = 0; i<packDatArray.length; i++){
