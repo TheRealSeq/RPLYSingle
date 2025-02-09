@@ -993,7 +993,7 @@
       parsedReplay.recordStartTime = Number(v.getBigUint64(offs));
       offs+=8;
       //map
-      if(this.SAVE_VERSION >=3){
+      if(ver >=3){
         let res = this.readString(v, offs);
         offs = res.offs;
         parsedReplay.map = res.parsedString;
