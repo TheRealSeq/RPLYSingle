@@ -482,6 +482,12 @@
     const playerUpdateMatch = js.match(H._playerThing + "\\.prototype\\."+H._update+"=function\\([a-zA-Z$_,]+\\)\\{");
     //inj(playerUpdateMatch[0], playerUpdateMatch[0]+"if(this.id==" + H.meid+"&&!window.bReplaying){this." + H.controlkeysPlayerVar + "=" + H.CONTROLKEYS+";window.recordMyplayer(this);}");
 
+    const loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch = js.match(/(function\((e),t\)\{)(if\(console\.log\("loadMap\(\)"\))/);
+    console.log(loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch);
+    inj(loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch[0], 
+      `${loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch[1]}if(window.bReplaying && window.rePlayMapIdxOverride >= 0) 
+      ${loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch[2]}=window.rePlayMapIdxOverride;${loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch[3]}`
+    );
 
   }
   //doing this here because where else?
@@ -762,6 +768,7 @@
       this.bIsPaused = true;
       this.bSkipDesired = false;
       this.iSkipAmount = 0;
+      window.rePlayMapIdxOverride = findMapIdx(replay.map);
     }
 
     static pause(){
@@ -1051,6 +1058,7 @@
   window.createGUI = createGUI;
   window.record = ReCorder;
   window.setReplayUIVis = setReplayUIVis;
+  window.rePlayMapIdxOverride = -1;
   //------------------------------------------------------------------------------------------------------------------------------------------
 
   //GUI
