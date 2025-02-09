@@ -232,6 +232,9 @@
         H.onMessage = onMessage1Mod;
         H.onMessage2 = onMessage2Match[1];
 
+        //this was causing issues
+        delete H.BabylonVersion;
+
         const variableNameRegex = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
         for (let name in H) {
           const deobf = H[name];
@@ -242,6 +245,8 @@
           ) {
             injectionString = `${injectionString}${name}: (() => { try { return ${deobf}; } catch (error) { return "value_undefined"; } })(),`;
           } else {
+            console.log(name + ": "+deobf);
+            console.log(variableNameRegex.test(deobf));
             const crashplease = "balls";
             crashplease = "balls2";
           }
@@ -466,7 +471,7 @@
 
     H.controlkeysPlayerVar = js.match("this\\.([a-zA-Z$_,]+)="+H.CONTROLKEYS)[1];
 
-    const playerUpdateMatch = js.match(H._playerThing + "\\.prototype\\."+H._update+"=function\\([a-zA-Z$_,]+\\)\\{");  
+    const playerUpdateMatch = js.match(H._playerThing + "\\.prototype\\."+H._update+"=function\\([a-zA-Z$_,]+\\)\\{");
     //inj(playerUpdateMatch[0], playerUpdateMatch[0]+"if(this.id==" + H.meid+"&&!window.bReplaying){this." + H.controlkeysPlayerVar + "=" + H.CONTROLKEYS+";window.recordMyplayer(this);}");
 
 
