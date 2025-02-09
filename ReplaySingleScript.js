@@ -1337,7 +1337,6 @@
     retargetButton.title = "retarget replay";
     retargetButton.onclick = function(){
       //TODO
-      console.log("retarget");
       createSexSexFUCKRetargetPopup(replay);
     };
     retargetButton.appendChild(retargetImage.cloneNode());
@@ -1391,6 +1390,17 @@
     const picker = document.createElement("select");
     {
       picker.className= "ss_select ss_marginright_sm ss_select";
+      if(replay.map && !replay.map.includes("KILL_PICKER_REMOVED_PREVIOUS")){
+        const op = document.createElement("option");
+        op.value = "KILL_PICKER_REMOVED_PREVIOUS:" + replay.map;
+        op.innerHTML = "[trust packet idx]";
+        picker.appendChild(op);
+      } else{
+        const op = document.createElement("option");
+        op.value = "cureDeletion";
+        op.innerHTML = "[undo manual deletion]";
+        picker.appendChild(op);
+      }
       ss.MAPS.forEach((m)=>{
         const op = document.createElement("option");
         op.value = m.filename;
@@ -1407,7 +1417,11 @@
       confirm.className = "ss_button btn_green bevel_green btn_md no_margin_bottom";
       popup.appendChild(confirm);
       confirm.onclick = ()=>{
-        replay.map = picker.value;
+        if(picker.value == "cureDeletion"){
+          replay.map = replay.map.split(":")[1];
+        } else{
+          replay.map = picker.value;
+        }
         rebuildReplayPopupList();
         homeScreen.removeChild(popup);
       };
