@@ -17,7 +17,7 @@
   let H = {}; //deobf names. Fuck you puppy.
   let C = {}; //commcodes
   let ss = {}; // fuck you puppy
-  let deleteImage, downloadImage, piperImage, playImage; //GUI Stuff. Need to do here bc JS stupid. GRRRR. fuck you puppy
+  let deleteImage, downloadImage, piperImage, playImage, retargetImage; //GUI Stuff. Need to do here bc JS stupid. GRRRR. fuck you puppy
   let timeProgressText;
   {
     LM();
@@ -1063,38 +1063,37 @@
 
   //GUI
   function createGUI(){
+    const w = "calc(calc(var(--ss-space-lg)* 3)*0.70)";
     //preload images
     piperImage = document.createElement("img");
     piperImage.src = "https://github.com/TheRealSeq/Media/blob/main/IffermoonPiperBattle.png?raw=true";
-    piperImage.style.width = "calc(calc(var(--ss-space-lg)* 3)*0.90)";
-    piperImage.style.height = "calc(calc(var(--ss-space-lg)* 3)*0.90)";
-    piperImage.style.top = "0";
-    piperImage.style.left = "0";
-    piperImage.style.position = "absolute";
+    piperImage.style.width = w;
+    piperImage.style.height = w;
+
 
     deleteImage = document.createElement("img");
     deleteImage.src = "https://github.com/TheRealSeq/Media/blob/main/SRPLY/delMiniIconII.png?raw=true";
-    deleteImage.style.width = "calc(calc(var(--ss-space-lg)* 3)*0.90)";
-    deleteImage.style.height = "calc(calc(var(--ss-space-lg)* 3)*0.90)";
-    deleteImage.style.top = "0";
-    deleteImage.style.left = "0";
-    deleteImage.style.position = "absolute";
+    deleteImage.style.width = w;
+    deleteImage.style.height = w;
+
 
     downloadImage = document.createElement("img");
     downloadImage.src = "https://github.com/TheRealSeq/Media/blob/main/SRPLY/downMiniIcon.png?raw=true";
-    downloadImage.style.width = "calc(calc(var(--ss-space-lg)* 3)*0.90)";
-    downloadImage.style.height = "calc(calc(var(--ss-space-lg)* 3)*0.90)";
-    downloadImage.style.top = "0";
-    downloadImage.style.left = "0";
-    downloadImage.style.position = "absolute";
+    downloadImage.style.width = w;
+    downloadImage.style.height = w;
+
 
     playImage = document.createElement("img");
     playImage.src = "https://github.com/TheRealSeq/Media/blob/main/SRPLY/playMiniIcon.png?raw=true";
-    playImage.style.width = "calc(calc(var(--ss-space-lg)* 3)*0.90)";
-    playImage.style.height = "calc(calc(var(--ss-space-lg)* 3)*0.90)";
-    playImage.style.top = "0";
-    playImage.style.left = "0";
-    playImage.style.position = "absolute";
+    playImage.style.width = w;
+    playImage.style.height = w;
+
+
+    retargetImage = document.createElement("img");
+    retargetImage.src = "https://github.com/TheRealSeq/Media/blob/main/SRPLY/retarget.png?raw=true";
+    retargetImage.style.width = w;
+    retargetImage.style.height = w;
+
 
     //IK I should probably append to a child but eh doesn't matter, does it?
     const homeScreen = document.getElementById("home_screen");
@@ -1235,6 +1234,9 @@
 
     const splitDiv = document.createElement("div");
     splitDiv.className = "display-grid grid-auto-flow-column justify-content-around gap-sm";
+    splitDiv.style.marginLeft = "10px";
+    splitDiv.style.marginRight = "10px";
+
 
     const textDiv = document.createElement("div");
 
@@ -1254,14 +1256,19 @@
       + " | " + "sv " + replay.saveVersion;
 
       const l1Text ="duration: "+replay.getLengthString() +", " + truncateNum(replay.streamer.length) +" packets";
-      const l2Text ="recorded at: "+timeConverter(replay.recordStartTime) +", sv " + replay.saveVersion;
+      const l2Text = "map: " + (ss.MAPS[findMapIdx(replay.map)] ? ss.MAPS[findMapIdx(replay.map)].name : "unknown (FN: " + replay.map + ")");
+      const l3Text ="recorded at: "+timeConverter(replay.recordStartTime) +", sv " + replay.saveVersion;
 
 
 
     const bottomText = document.createElement("p");
     bottomText.textContent = metadataString;
     bottomText.style.fontSize= ".7em;";
+    textDiv.innerHTML = `
+      ${l1Text} <br> ${l2Text} <br>  ${l3Text}
+    `;
     //textDiv.appendChild(bottomText);
+    /*
     const l1 = document.createElement("p");
     l1.textContent = l1Text;
     l1.style.margin = "10px"
@@ -1271,13 +1278,16 @@
     l2.textContent = l2Text;
     l2.style.margin = "10px"
     textDiv.appendChild(l2);
+    */
     }
+    
+      
 
     //TODO: ADD BUTTÓNS
 
     //delete
     const deleteButton = document.createElement("button");
-    deleteButton.className = "ss_button btn_red bevel_red box_relative pause-screen-ui text-shadow-none text_blue1";
+    deleteButton.className = "ss_button btn_red bevel_red box_relative pause-screen-ui btn-account-w-icon text-shadow-none text_blue1";
     deleteButton.style.top = "50%";
     deleteButton.style.transform = "translateY(-50%)";
     deleteButton.style.height = "calc(var(--ss-space-lg)* 3)";
@@ -1291,7 +1301,7 @@
 
     //download
     const downloadButton = document.createElement("button");
-    downloadButton.className = "ss_button btn_blue bevel_blue box_relative pause-screen-ui text-shadow-none text_blue1";
+    downloadButton.className = "ss_button btn_blue bevel_blue box_relative pause-screen-ui btn-account-w-icon text-shadow-none text_blue1";
     downloadButton.style.top = "50%";
     downloadButton.style.transform = "translateY(-50%)";
     downloadButton.style.height = "calc(var(--ss-space-lg)* 3)";
@@ -1304,7 +1314,7 @@
 
      //download
     const playButton = document.createElement("button");
-    playButton.className = "ss_button btn_green bevel_green box_relative pause-screen-ui text-shadow-none text_blue1";
+    playButton.className = "ss_button btn_green bevel_green box_relative pause-screen-ui btn-account-w-icon text-shadow-none text_blue1";
     playButton.style.top = "50%";
     playButton.style.transform = "translateY(-50%)";
     playButton.style.height = "calc(var(--ss-space-lg)* 3)";
@@ -1317,6 +1327,21 @@
     };
     if(Math.random()<0.05){playButton.appendChild(piperImage.cloneNode()); }else{ playButton.appendChild(playImage.cloneNode());}
 
+    //download
+    const retargetButton = document.createElement("button");
+    retargetButton.className = "ss_button btn_yolk bevel_yolk box_relative pause-screen-ui btn-account-w-icon text-shadow-none text_blue1";
+    retargetButton.style.top = "50%";
+    retargetButton.style.transform = "translateY(-50%)";
+    retargetButton.style.height = "calc(var(--ss-space-lg)* 3)";
+    retargetButton.style.width = "calc(var(--ss-space-lg)* 3)";
+    retargetButton.title = "retarget replay";
+    retargetButton.onclick = function(){
+      //TODO
+      console.log("retarget");
+      createSexSexFUCKRetargetPopup(replay);
+    };
+    retargetButton.appendChild(retargetImage.cloneNode());
+
 
     const testElem = document.createElement("h1");
     testElem.textContent = "test very wide string content WOWOOWOWSSSS SSSSSSS SSSSSSSSSSSSSSS SSSSS SSSSSSSSSSS SSSSS SSSSSSSSS SSS this wis wrapping";
@@ -1326,12 +1351,68 @@
     splitDiv.appendChild(textDiv);
 
     splitDiv.appendChild(downloadButton);
+    splitDiv.appendChild(retargetButton);
     splitDiv.appendChild(deleteButton);
+
 
 
     mainDiv.appendChild(splitDiv);
 
     return mainDiv;
+  }
+
+  function createSexSexFUCKRetargetPopup(replay){
+    const homeScreen = document.getElementById("home_screen");
+    //create base popup container
+    const popup = document.createElement("div");
+    popup.id= "MOD_REPLAY_RETARGET_POP";
+    popup.className = "popup_window popup_lg centered roundme_md";
+    {//close button
+      const popupClose = document.createElement("button");
+      popupClose.className = "popup_close clickme roundme_sm";
+      //button image
+      const buttonImage = document.createElement("i");
+      buttonImage.className = "fas fa-times text_white fa-2x";
+      popupClose.appendChild(buttonImage);
+
+      popupClose.onclick = function(){
+        //onclick func
+        homeScreen.removeChild(popup);
+      }
+
+      popup.appendChild(popupClose);
+    }{//title
+      const titleText = document.createElement("h1");
+      titleText.className = "roundme_sm text-center";
+      titleText.textContent = "Retarget replay";
+      popup.appendChild(titleText);
+    }
+    //combo box
+    const picker = document.createElement("select");
+    {
+      picker.className= "ss_select ss_marginright_sm ss_select";
+      ss.MAPS.forEach((m)=>{
+        const op = document.createElement("option");
+        op.value = m.filename;
+        op.innerHTML = m.name;
+        picker.appendChild(op);
+      });
+      popup.appendChild(picker);
+    }
+    //confirmatoin
+    {
+      const confirm = document.createElement("button");
+      confirm.title = "confirm retarget";
+      confirm.textContent = "confirm";
+      confirm.className = "ss_button btn_green bevel_green btn_md no_margin_bottom";
+      popup.appendChild(confirm);
+      confirm.onclick = ()=>{
+        replay.map = picker.value;
+        rebuildReplayPopupList();
+        homeScreen.removeChild(popup);
+      };
+    }
+    homeScreen.appendChild(popup);
   }
 
   function createUploadLoadingScreen(){
