@@ -477,10 +477,13 @@
     const setControlkeysToMeMatch= js.match("(\\|\\|this\\.id!=" + H.meid + ")(\\|\\|)");
     //inj(setControlkeysToMeMatch[0], setControlkeysToMeMatch[1] + "||window.bReplaying" + setControlkeysToMeMatch[2]);
 
-    H.controlkeysPlayerVar = js.match("this\\.([a-zA-Z$_,]+)="+H.CONTROLKEYS)[1];
+    const cckmatch = js.match("this\\.([a-zA-Z$_,]+)="+H.CONTROLKEYS);
+    H.controlkeysPlayerVar = cckmatch[1];
+
+    inj(cckmatch[0], "true");
 
     const playerUpdateMatch = js.match(H._playerThing + "\\.prototype\\."+H._update+"=function\\([a-zA-Z$_,]+\\)\\{");
-    //inj(playerUpdateMatch[0], playerUpdateMatch[0]+"if(this.id==" + H.meid+"&&!window.bReplaying){this." + H.controlkeysPlayerVar + "=" + H.CONTROLKEYS+";window.recordMyplayer(this);}");
+    inj(playerUpdateMatch[0], playerUpdateMatch[0]+"if(this.id==" + H.meid+")window.replayMe = this; if(this.id==" + H.meid+"&&!window.bReplaying){this." + H.controlkeysPlayerVar + "=" + H.CONTROLKEYS+";window.recordMyplayer(this);}");
 
     const loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch = js.match(/(function\((e),t\)\{)(if\(console\.log\("loadMap\(\)"\))/);
     console.log(loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch);
@@ -492,16 +495,31 @@
   }
   //doing this here because where else?
   window.recordMyplayer = function(player){
-    const buffer = new ArrayBuffer(this.calcByteArrayLength(packets));
+    const buffer = new ArrayBuffer(9);
     const v = new DataView(buffer);
     let offs = 0;
-    v.setUint8(offs, player[H.controlkeysPlayerVar]);
+    v.setUint8(offs, H.CONTROLKEYS);
     offs += 1;
     v.setFloat32(offs, player[H.yaw]);
     offs+=4;
     v.setFloat32(offs, player[H.pitch]);
     offs+=4;
+    ReCorder.handlePacketInput({data: buffer}, 3);
+  }
 
+  function playBackMyPlayerPacket(arr){
+    //console.log("PBMP: ");
+    //console.log(arr);
+    if(window.replayMe){
+      const v = new DataView(arr.buffer);
+      window.replayMe[H.controlkeysPlayerVar] = v.getUint8(0);
+      let offs = 0;
+      offs += 1;
+      window.replayMe[H.yaw] = v.getFloat32(offs);
+      offs+=4;
+      window.replayMe[H.pitch] = v.getFloat32(offs);
+      offs+=4;
+    }
   }
 
   function findMapIdx(fileName) {
@@ -538,7 +556,7 @@
       //time is relative time passed somce rec start
       //this.data = data; //(Uint8Array of the ws' input) JETZT: volles Websocketonmessageantwortobjekt, somit liegt die originale data in data.data (dann halt mit new Uint8Array aber jetzt nd)
       this.time = time; //time since record start in millis
-      this.type = type; //what func was it recorded form? (1 for onMessage1, 2 for onMessage2)
+      this.type = type; //what func was it recorded form? (1 for onMessage1, 2 for onMessage2, 3 for myplayer)
       this.data = {
         data: data.data, //heh
       };
@@ -835,6 +853,9 @@
           case 2:
             //console.log("on2");
             ss.onMessage2(packet.data);
+            break;
+          case 3: //myplayer packet.
+            playBackMyPlayerPacket(packet.getDataAsByteArray());
             break;
         }
       }catch(e){
