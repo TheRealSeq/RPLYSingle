@@ -492,6 +492,36 @@
       ${loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch[2]}=window.rePlayMapIdxOverride;${loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch[3]}`
     );
 
+    const setMeRotationToSpectatorRotationBecauseWhyFUCKINGNotHuhMatch = js.match(/\.prototype\.freeCamera=function\(\)\{/);
+    console.log(setMeRotationToSpectatorRotationBecauseWhyFUCKINGNotHuhMatch);
+    inj(setMeRotationToSpectatorRotationBecauseWhyFUCKINGNotHuhMatch[0], setMeRotationToSpectatorRotationBecauseWhyFUCKINGNotHuhMatch[0]+"!window.bReplaying&&");
+
+    console.log(H);
+
+    const setSpectatorRotationToMeRotationTooForSomeFUCKINGSHITReasonWHYWouldYouDoThatMatch = js.match(`${H.CAMERA}\\.rotation.x=-${H.me}\\.${H.pitch},${H.CAMERA}\\.rotation.y=${H.me}\\.${H.yaw}`);
+    console.log(setSpectatorRotationToMeRotationTooForSomeFUCKINGSHITReasonWHYWouldYouDoThatMatch);
+    const test25 = setSpectatorRotationToMeRotationTooForSomeFUCKINGSHITReasonWHYWouldYouDoThatMatch[0].replaceAll(H.me, "window.rotationGrabs");
+    //inj(setSpectatorRotationToMeRotationTooForSomeFUCKINGSHITReasonWHYWouldYouDoThatMatch[0], "!window.bReplaying&&("+setSpectatorRotationToMeRotationTooForSomeFUCKINGSHITReasonWHYWouldYouDoThatMatch[0]+")");
+    inj(setSpectatorRotationToMeRotationTooForSomeFUCKINGSHITReasonWHYWouldYouDoThatMatch[0], test25);
+
+
+    //,fO.SN=Math.radAdd(fO.SN,-i*t),fO.FN=Math.clamp(fO.FN+n*CM.mouseInvert*-t,-1.5,1.5)
+    const setRotationsInputHandelerMatch = js.match(`${H.me}\\.${H.yaw}=Math\\.radAdd.+?(?=Math)Math\\.clamp.+?(?=})`);
+    console.log(setRotationsInputHandelerMatch);
+    const s2f = setRotationsInputHandelerMatch[0].replaceAll(H.me, "window.rotationGrabs");
+    inj(setRotationsInputHandelerMatch[0], 
+      `${s2f},!window.bReplaying&&(${setRotationsInputHandelerMatch[0]})`
+    );
+    unsafeWindow.rotationGrabs = {};
+    unsafeWindow.rotationGrabs[H.pitch] = 0;
+    unsafeWindow.rotationGrabs[H.yaw] = 0;
+
+    //;else{var t=0,i=0,n=0;Pb&gx.left
+    const setDeltaVectorToDirOfPlayerMatch = js.match(/;else\{var [a-zA-Z$_,]+=0,[a-zA-Z$_,]+=0,[a-zA-Z$_,]+=0;[a-zA-Z$_,]+&[a-zA-Z$_,]+\.left.+?(?=var)/);
+    console.log(setDeltaVectorToDirOfPlayerMatch);
+    const s3f = setDeltaVectorToDirOfPlayerMatch[0].replaceAll(H.me, "window.rotationGrabs");
+    inj(setDeltaVectorToDirOfPlayerMatch[0], s3f);
+
   }
   //doing this here because where else?
   window.recordMyplayer = function(player){
