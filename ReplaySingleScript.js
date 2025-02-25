@@ -19,6 +19,7 @@
   let ss = {}; // fuck you puppy
   let deleteImage, downloadImage, piperImage, playImage, retargetImage; //GUI Stuff. Need to do here bc JS stupid. GRRRR. fuck you puppy
   let timeProgressText;
+  let injectSuccess = 0, maxInjects = 0;
   {
     LM();
     function LM() {
@@ -68,23 +69,6 @@
         window[funcName] = func;
         F[name] = window[funcName];
         functionNames[name] = funcName;
-      };
-      const findKeyWithProperty = function (obj, propertyToFind) {
-        for (const key in obj) {
-          if (obj.hasOwnProperty(key)) {
-            if (key === propertyToFind) {
-              return [key];
-            } else if (
-              typeof obj[key] === "object" &&
-              obj[key] !== null &&
-              obj[key].hasOwnProperty(propertyToFind)
-            ) {
-              return key;
-            }
-          }
-        }
-        // Property not found
-        return null;
       };
       const fetchTextContent = function (url) {
         var xhr = new XMLHttpRequest();
@@ -146,12 +130,14 @@
 
         const modifyJS = function (find, replace) {
           let oldJS = js;
+          ++maxInjects;
           js = js.originalReplace(find, replace);
           if (oldJS !== js) {
             console.log(
               "%cReplacement successful! Injected code: " + replace,
               "color: green; font-weight: bold; font-size: 0.6em; text-decoration: italic;",
             );
+            ++injectSuccess;
           } else {
             console.log(
               "%cReplacement failed! Attempted to replace " +
@@ -272,6 +258,9 @@
         // console.log(js);
 
         injExternal(js, modifyJS); //fuck you puppy
+
+        console.log(`--SRPLY SUMMARY--\n${injectSuccess}/${maxInjects} injections (${maxInjects-injectSuccess} failures)`);
+        //showMessageDialog("--SRPLY SUMMARY--", `${injectSuccess}/${maxInjects} injections (${maxInjects-injectSuccess} failures)`);
 
         console.log(H); //why here? Fuck you puppy
         return js;
@@ -1549,6 +1538,12 @@
     const container = document.getElementById("MOD_REPLAY_UI_CONTAINER");
     container.style.display = visible ? "block" : "none";
     //assuming we can hide the game UI elements here too
+  }
+
+  //--DO NOT USE- BROKEN--
+  function showMessageDialog(title, text){
+    const html = `<div class="popup_window popup_sm roundme_md centered" id="genericPopup" style=""><div><button class="roundme_sm popup_close clickme"><i class="fas fa-times text_white fa-2x"></i></button> <h3 id="popup_title" class="roundme_sm shadow_blue4 nospace text_white">${title}</h3></div> <div class="popup_sm_content">${text}</div> <div id="btn_horizontal" class="f_center"><button class="ss_button btn_red bevel_red width_sm" style="display: none;"></button> <button class="ss_button btn_green bevel_green width_sm">OK</button></div> </div>`;
+    document.getElementById("app").innerHTML+=html;
   }
 
 
