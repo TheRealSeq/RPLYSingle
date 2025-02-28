@@ -246,10 +246,11 @@
           }
         }
         console.log(injectionString);
-       // modifyJS(
-       //   H.SCENE + ".render",
-       //   `window["${functionNames.retrieveFunctions}"]({${injectionString}},true)||${H.SCENE}.render`,
-       // );
+        //oh...
+        modifyJS(
+          H.SCENE + ".render",
+          `window["${functionNames.retrieveFunctions}"]({${injectionString}},true)||${H.SCENE}.render`,
+        );
 
         //this one might be risky...
         //const beforeNotPlayingInIFramMatch = js.match(/subtree:!0\}\);var [a-zA-Z$_,]+=\(\)=>\{/)
@@ -511,13 +512,24 @@
     const s3f = setDeltaVectorToDirOfPlayerMatch[0].replaceAll(H.me, "window.rotationGrabs");
     inj(setDeltaVectorToDirOfPlayerMatch[0], s3f);
 
+    //oops this doesnt change anything
+    //this.playerIdx!==_O
+    //const doNotGoSpectateMyPlayerMatch = js.match(/this\.playerIdx!==[a-zA-Z$_,]+/);
+    //console.log(doNotGoSpectateMyPlayerMatch);
+    //inj(doNotGoSpectateMyPlayerMatch[0], `(window.bReplaying||${doNotGoSpectateMyPlayerMatch[0]})`);
+
+    //.playing && player.id !== meId
+    const doNotSelectMyPlayerForFindNextPlayerInTheSpectatorClass = js.match(`(\.${H.playing}&&)([a-zA-Z$_,]+\.id!==${H.meid})`);
+    console.log(doNotSelectMyPlayerForFindNextPlayerInTheSpectatorClass);
+    const injectione = `${doNotSelectMyPlayerForFindNextPlayerInTheSpectatorClass[1]}(window.bReplaying||${doNotSelectMyPlayerForFindNextPlayerInTheSpectatorClass[2]})`;
+    inj(doNotSelectMyPlayerForFindNextPlayerInTheSpectatorClass[0], injectione);
   }
   //doing this here because where else?
   window.recordMyplayer = function(player){
     const buffer = new ArrayBuffer(9);
     const v = new DataView(buffer);
     let offs = 0;
-    v.setUint8(offs, H.CONTROLKEYS);
+    v.setUint8(offs, ss.CONTROLKEYS); //... //reminder to kms @ June 7th 2025
     offs += 1;
     v.setFloat32(offs, player[H.yaw]);
     offs+=4;
@@ -531,7 +543,10 @@
     //console.log(arr);
     if(window.replayMe){
       const v = new DataView(arr.buffer);
+      //idk which one, but it DOESNT WORK!!!!!!
       window.replayMe[H.controlkeysPlayerVar] = v.getUint8(0);
+      //window.replayMe[H.CONTROLKEYS] = v.getUint8(0);
+
       let offs = 0;
       offs += 1;
       window.replayMe[H.yaw] = v.getFloat32(offs);
