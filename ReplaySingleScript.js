@@ -1,14 +1,13 @@
 // ==UserScript==
 // @name         SRPLYSingle
-// @namespace    https://github.com/onlypuppy7/LibertyMutualShellShockers/
+// @namespace    sM
 // @license      GPL-3.0
-// @version      1.3.0
-// @author       onlypuppy7
+// @version      0.9.0
+// @author       Cr0wley
 // @description  Replay shell games
 // @match        https://shellshock.io/*
 // @grant        none
 // @run-at       document-start
-// @icon         https://github.com/onlypuppy7/LibertyMutualShellShockers/blob/main/scripticon.jpg?raw=true
 // @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js
 // ==/UserScript==
 
@@ -261,7 +260,7 @@
         injExternal(js, modifyJS); //fuck you puppy
 
         console.log(`--SRPLY SUMMARY--\n${injectSuccess}/${maxInjects} injections (${maxInjects-injectSuccess} failures)`);
-        //showMessageDialog("--SRPLY SUMMARY--", `${injectSuccess}/${maxInjects} injections (${maxInjects-injectSuccess} failures)`);
+        //showMessageDialog("--SRPLY SUMMARY--", `${injectSuccess}/${Injects} injections (${Injects-injectSuccess} failures)`);
 
         console.log(H); //why here? Fuck you puppy
         return js;
