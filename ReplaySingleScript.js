@@ -3,7 +3,7 @@
 // @namespace    sM
 // @license      GPL-3.0
 // @version      0.9.0
-// @author       Cr0wley
+// @author       Sq
 // @description  Replay shell games
 // @match        https://shellshock.io/*
 // @grant        none
