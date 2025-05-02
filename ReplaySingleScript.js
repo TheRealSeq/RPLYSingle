@@ -1388,6 +1388,10 @@
    * will do nothing if no popup, but also not error :D
    */
   function rebuildReplayPopupList(){
+    if(replays.length ===0){
+      closeReplayPop(); createReplayPopup();
+      return;
+    }
     const scroll = document.getElementById("MOD_REPLAY_LISTSCROLL");
     const sec = document.getElementById("MOD_REPLAY_LISTSECTION");
     const warn = document.getElementById("MOD_REPLAY_WARNELEM_NOREPLAY");
