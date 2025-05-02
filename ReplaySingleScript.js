@@ -15,10 +15,13 @@
   let functionNames = []; // fuck you puppy
   let H = {}; //deobf names. Fuck you puppy.
   let C = {}; //commcodes
+  let CN = {};//commcodes names
   let ss = {}; // fuck you puppy
   let deleteImage, downloadImage, piperImage, playImage, retargetImage; //GUI Stuff. Need to do here bc JS stupid. GRRRR. fuck you puppy
   let timeProgressText;
   let injectSuccess = 0, maxInjects = 0;
+  let isClientReady = false;
+  let mapEditJS = "UNKNOWN";
   {
     LM();
     function LM() {
@@ -33,7 +36,8 @@
       String.prototype.originalReplaceAll = function () {
         return originalReplaceAll.apply(this, arguments);
       };
-
+//TODO REPLACE
+/*
       const originalXHROpen = XMLHttpRequest.prototype.open;
       const originalXHRGetResponse = Object.getOwnPropertyDescriptor(
         XMLHttpRequest.prototype,
@@ -55,6 +59,16 @@
           return originalXHRGetResponse.get.call(this);
         },
       });
+      */
+
+    let _oldAppendChild = HTMLElement.prototype.appendChild;
+    HTMLElement.prototype.appendChild = function(...args) {
+    if (args[0] && args[0].tagName &&  args[0].tagName.toLowerCase() == "script" && args[0].innerHTML.length > 2_000_000) {
+      args[0].innerHTML = inject(args[0].innerHTML);
+    };
+    return _oldAppendChild.apply(this, args);
+    }
+
       //VAR STUFF
       let F = [];
 
@@ -80,6 +94,32 @@
           return null;
         }
       };
+
+      mapEditJS = fetchTextContent("https://shellshock.io/js/mapEdit.js");
+      console.log("found map edit js ");
+      console.log(mapEditJS);
+
+      function getCommCode(name){
+        // addPlayer_: 121
+        const rexRegis = `${name}_: 1([0-9]+)`;
+        const ffasd =  mapEditJS.match(rexRegis);
+        console.log("map ed rex mat ");
+        console.log(ffasd);
+        if(ffasd){
+          const val = Number(ffasd[1]);
+          //const val = eval(ffasd[1]);
+          return val;
+        }
+      }
+      function grabCC(name){
+        C[name]=getCommCode(name);
+      }
+      C.addPlayer = getCommCode("addPlayer");
+      grabCC("syncMe");
+      grabCC("hitMe");
+      grabCC("socketReady");
+      grabCC("clientReady");
+      grabCC("gameJoined");
 
       const inject = function (js) {
         let clientKeys;
@@ -113,15 +153,17 @@
           /(\w+):/g,
           '"$1":',
         );
-        C = JSON.parse(formattedStr);
+        //C = JSON.parse(formattedStr);
 
         //FUCK YOU PUPPY
+        /*
         var ig = JSON.parse(constants.vars.CommCodeStart);
         Object.keys(C).forEach((k) => {
           C[k] = ig++;
         });
 
         console.log(C);
+        */
 
         H = clientKeys.vars;
 
@@ -168,13 +210,17 @@
         //FUCK YOU PUPPY
         //I love you puppy
 
+        const sendGameOptionsVName = js.match(/function ([a-zA-Z$_,]+)\(\)\{[a-zA-Z$_,]+\.serialize\(\)\.send\(/)[1];
+        //;break;case nc.F:_D()}}
+        const matchIns = `case [a-zA-Z$_,]+\\.[a-zA-Z$_,]+:${sendGameOptionsVName}\\(\\)`;
+        const finalRegex = H.ws + `\\.onmessage=(function\\(([a-zA-Z$_,]+)\\)\\{switch.+?(?=${matchIns})${matchIns}\\}\\})`;
+        console.log(finalRegex);
         const onMessage2Match = js.match(
-          H.ws +
-            "\\.onmessage=(function\\(([a-zA-Z$_,]+)\\)\\{switch.+?(?=requestGameOptions)requestGameOptions:([a-zA-Z$_,]+)\\(\\)\\}\\})",
+          finalRegex
         );
 
-        console.log(onMessageMatch[1]);
-        console.log(onMessage2Match[1]);
+        if(onMessageMatch)console.log(onMessageMatch[1]);
+        if(onMessage2Match)console.log(onMessage2Match[1]);
 
         let onMessage2Mod = onMessage2Match[1];
 
@@ -198,10 +244,39 @@
         console.log(mapMatch);
         H.MAPS = mapMatch[1];
 
+        //find removePlayer commCode
+        //function uw(e){var t=qb[e];e!=EO?t&&(t.dn.remove()
+        H.removePlayerFunc = js.match(/function ([a-zA-Z$_,]+)\([a-zA-Z$_,]+\)\{var [a-zA-Z$_,]+=[a-zA-Z$_,]+\[[a-zA-Z$_,]+\];[a-zA-Z$_,]+!=[a-zA-Z$_,]+\?[a-zA-Z$_,]+&&\([a-zA-Z$_,]+\.[a-zA-Z$_,]+\.remove\(\)/);
+        console.log(H.removePlayerFunc);
+        H.removePlayerFunc = H.removePlayerFunc[1];
+        //C is commcode names
+        //case nc.N:uw(
+        CN.removePlayer = js.match(`case [a-zA-Z$_,]+\\.([a-zA-Z$_,]+):${H.removePlayerFunc}\\(`);
+        console.log(CN.removePlayer);
+        CN.removePlayer = CN.removePlayer[1];
+
+        //remove from play func
+        //const removePlayerMatch = js.match(/\.removePlayer:([a-zA-Z$_,]+)/);
+        const removePlayerMatch = js.match(`\\.${CN.removePlayer}:([a-zA-Z$_,]+)`);
+        console.log("rem from play matzch: ");
+        console.log(removePlayerMatch);
+        H.removePlayer = removePlayerMatch[1];
+
+
+        //find addPlayer commcode
+        //.forEach((t=>e.At[t]=0)),fw(e),
+        H.addPlayerFunc = js.match(/\.forEach\(\([a-zA-Z$_,]+=>[a-zA-Z$_,]+\.[a-zA-Z$_,]+\[t\]=0\)\),([a-zA-Z$_,]+)\([a-zA-Z$_,]+\),/); //this matches the playOffline addplayer call.
+        console.log(H.addPlayerFunc)
+        H.addPlayerFunc = H.addPlayerFunc[1];
+        CN.addPlayer = js.match(/\.send\([a-zA-Z$_,]+\);break;case [a-zA-Z$_,]+\.([a-zA-Z$_,]+):var [a-zA-Z$_,]+=[a-zA-Z$_,]+\.unPackInt8U\(\)/);
+        console.log(CN.addPlayer);
+        CN.addPlayer = CN.addPlayer[1];
+
         //onMessage1Mod = onMessage1Mod.originalReplace()
         console.log("meid: " + H.meid);
         onMessage1Mod = onMessage1Mod.originalReplaceAll(H.meid, "-1");
-        H.addPlayerID = js.match(/addPlayer:var ([a-zA-Z$_,]+)=/)[1];
+        const newRegeg = `${CN.addPlayer}:var ([a-zA-Z$_,]+)=`
+        H.addPlayerID = js.match(newRegeg)[1];
         const endOfAddPlayerUnpackingMatch = js.match(
           /\.gameType=[a-zA-Z$_,]+\.unPackInt8U\(\),/,
         );
@@ -517,11 +592,15 @@
     //console.log(doNotGoSpectateMyPlayerMatch);
     //inj(doNotGoSpectateMyPlayerMatch[0], `(window.bReplaying||${doNotGoSpectateMyPlayerMatch[0]})`);
 
+    H.playing = js.match(/\.([a-zA-Z$_,]+)&&\([a-zA-Z$_,]+\.[a-zA-Z$_,]+\.handsToWeaponSkeleton\(\)/)[1];
+
     //.playing && player.id !== meId
+    if(false || true){
     const doNotSelectMyPlayerForFindNextPlayerInTheSpectatorClass = js.match(`(\.${H.playing}&&)([a-zA-Z$_,]+\.id!==${H.meid})`);
     console.log(doNotSelectMyPlayerForFindNextPlayerInTheSpectatorClass);
     const injectione = `${doNotSelectMyPlayerForFindNextPlayerInTheSpectatorClass[1]}(window.bReplaying||${doNotSelectMyPlayerForFindNextPlayerInTheSpectatorClass[2]})`;
     inj(doNotSelectMyPlayerForFindNextPlayerInTheSpectatorClass[0], injectione);
+    }
   }
   //doing this here because where else?
   window.recordMyplayer = function(player){
@@ -542,9 +621,7 @@
     //console.log(arr);
     if(window.replayMe){
       const v = new DataView(arr.buffer);
-      //idk which one, but it DOESNT WORK!!!!!!
       window.replayMe[H.controlkeysPlayerVar] = v.getUint8(0);
-      //window.replayMe[H.CONTROLKEYS] = v.getUint8(0);
 
       let offs = 0;
       offs += 1;
@@ -565,6 +642,13 @@
   class ReCorder{
 
     static handlePacketInput(d, t){
+      /*
+      Object.keys(ss.SERVERCODES).forEach((key)=>{
+        if(ss.SERVERCODES[key] == Packet3.peekByteStatic(d)){
+          console.log("cc " + key);
+        }
+      });
+      */
       if(Packet3.peekByteStatic(d) ===C.socketReady &&t<3){
         console.log("SRPLY: detected socketReady commcode, automatically creating new replay!");
         this.releaseReplay();
@@ -624,7 +708,7 @@
         pack,
       );
       //record map
-      if(pack.peekByte() == ss.SERVERCODES.gameJoined){
+      if(pack.peekByte() == /*ss.SERVERCODES.gameJoined*/C.gameJoined){
         const d = pack.getDataAsByteArray();
         let idx = 1+1+1+1; //commcode + meId +myTeam +gameType 
         let mapIdx = d[idx];
@@ -810,6 +894,16 @@
   }
 
   //let rePlaytemp = new RePlay(); //TODO: make this not be here
+  function removeAllPlayers(){
+    //console.log(ss.PLAYERS);
+    ss.PLAYERS.forEach((play)=>{
+      //console.log(ss[H.removePlayer]);
+      //console.log(ss.removePlayer);
+      if(!play) return;
+      ss.removePlayer(play);
+    });
+  }
+  window.remAllP = removeAllPlayers;
 
   class RePlayer {
     static insertReplay(replay) {
@@ -830,6 +924,23 @@
       console.log("skip desired for " + amount);
       this.iSkipAmount = amount;
       this.bSkipDesired = true;
+    }
+
+    static goToPacket(packetIdx){
+      this.iReplayRelativeTime = 0;
+      this.iReplayPacketIdx = packetIdx;
+    }
+    static jumpToStart(){
+      let pType = -1;
+      let i = 0;
+      while(pType != C.addPlayer){
+        const pack = this.activeReplay.streamer.getPacket(++i);
+        console.log(pack);
+        console.log(C.addPlayer);
+        pType= pack.peekByte();
+      }
+      removeAllPlayers();
+      this.goToPacket(i);
     }
 
     static async resume() {
@@ -875,6 +986,11 @@
         packet.peekByte() != C.socketReady //&&
         //!bannedCommCodes.includes(packet.peekByte())
       ) {
+        if(packet.peekByte()==C.clientReady){
+          console.log("ClientReady extern, isReady: " + isClientReady);
+          if(isClientReady) return;
+          isClientReady = true;
+        }
         //I want to kill myself :(
         //yes I know that that check up there ^^^^^^^^^^^^ doesn't account for any packet after the first one, but eh...
         try{
@@ -896,6 +1012,8 @@
           console.error(e);
           console.log("this is error should not be the end of the world. Report to creator if playback breaks!");
         }
+      } else if(packet.data && packet.peekByte() == C.socketReady){
+        isClientReady = false;
       }
     }
 
@@ -1113,6 +1231,11 @@
   window.record = ReCorder;
   window.setReplayUIVis = setReplayUIVis;
   window.rePlayMapIdxOverride = -1;
+
+  setInterval(()=> 
+  window.extra = {
+    C,CN,H
+  },1000);
   //------------------------------------------------------------------------------------------------------------------------------------------
 
   //GUI
