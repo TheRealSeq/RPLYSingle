@@ -357,6 +357,204 @@
     }
   } //I love you puppy <3
 
+
+  //:(
+
+  const log = console.log;
+
+    WebAssembly.instantiateStreaming = async (resp, importObj) => {
+        const response = await resp;
+        const buffer = await response.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+
+        const replacements = [
+            {
+                // pattern: loop + void type + br + depth 0 + end
+                pattern:     [0x03, 0x40, 0x0C, 0x00, 0x0B],
+                replacement: [0x01, 0x01, 0x01, 0x01, 0x01] // five nops
+            },
+            {
+                pattern:     [0x41, 0x20, 0x41, 0x01, 0x10, 0xA7], // 0x01 = i32.const 1
+                replacement: [0x41, 0x20, 0x41, 0x4B, 0x10, 0xA7]
+            }
+        ];
+
+        const start = performance.now();
+
+        const formatBytes = (bytes, base = 10) => ([ ...bytes]).map(b => b.toString(base).padStart(base === 16 ? 2 : 3, '0')).join(' ');
+
+        let index = 0;
+        // loop through all replacements
+        /* for (const { pattern, replacement } of replacements) {
+            // search and patch
+            for (let i = 0; i < bytes.length - pattern.length; i++) {
+                if (pattern.every((b, j) => bytes[i + j] === b)) {
+                    let before = bytes.slice(i, i + pattern.length);
+                    let before10 = formatBytes(before, 10);
+                    let before16 = formatBytes(before, 16);
+
+                    for (let j = 0; j < replacement.length; j++) {
+                        bytes[i + j] = replacement[j];
+                    };
+
+                    let after = bytes.slice(i, i + replacement.length);
+                    let after10 = formatBytes(after, 10);
+                    let after16 = formatBytes(after, 16);
+
+                    log(
+                        `[sfc] Found loop at offset ${i} (hex: 0x${i.toString(16)}), patching ${index}...\n` +
+                        `Before: ${before10}\n` +
+                        `After:  ${after10}\n` +
+                        `Before (hex): ${before16}\n` +
+                        `After  (hex):  ${after16}\n`
+                    );
+                };
+            };
+            index++;
+        }; */
+
+        const end = performance.now();
+
+        log(`[sfc] Loop patching for ${replacements.length} patches took ${end - start}ms`);
+
+        const wbg = importObj.wbg;
+
+        let blockedCalls = ["sethref", "setInterval"];
+        let exceptions = ["SELF", "WINDOW", "GLOBAL_THIS", "GLOBAL", "is_undefined", "init_", "document", "createElement", "settextContent", "body", "instanceof_Window", "instanceof_HtmlCanvasElement", "nodeType", "_item_", "_textContent_", "_now_", "_closure_", "_string_", "_number_", "movementX", "movementY", "_new_", "addEventListener", "instanceof_HtmlElement", "_get_", "_set_"];
+
+        // https://stackoverflow.com/questions/2712136/how-do-i-make-this-loop-all-children-recursively
+
+        function wipeNode(node, classNameToRemove) {
+            const clonedNode = node.cloneNode(true);
+
+            function removeElements(currentNode) {
+                if (!currentNode || !currentNode.children) {
+                    return;
+                };
+                const children = Array.from(currentNode.children);
+
+                for (let i = 0; i < children.length; i++) {
+                    const child = children[i];
+                    const classList = Array.from(child.classList);
+                    if (classList.includes('tp-statefarm')
+                        || classList.includes('tp-dvfw')
+                        || classList.includes("MiniMap")
+                        || classList.includes("playerDot")
+                        || classList.some(c => c.startsWith("tp-"))) {
+                        currentNode.removeChild(child);
+                    } else {
+                        removeElements(child);
+                    };
+                };
+            };
+            removeElements(clonedNode);
+
+            return clonedNode;
+        };
+
+
+        function checkForStateFarmChildren(node) {
+            if (node.querySelectorAll) {
+                return node.querySelectorAll("[class^=\"tp-\"], .MiniMap, .playerDot").length > 0;
+            };
+            return true;
+        };
+
+        class FakeNodeList extends Array {
+            item(index) {
+                return this[index];
+            };
+        };
+
+        let rewrites = { // nice try but you only publicly get to see the prod rewrites
+           'querySelector': function (item, wasm_str_offset, len) {
+                if (len == 1) { // '*'
+                    log("Hooked querySelector", item, wasm_str_offset, len);
+                    let items = document.querySelectorAll("*:not(.tp-statefarm):not(.tp-statefarm *):not(.tp-statefarm > *):not(.tp-statefarm > * *)");
+                    log("Hooked length:", items.length);
+                    return items;
+                };
+           },
+           'childNodes': function (item) {
+                // log("Hooked childNodes, arg:", item);
+                let nodes = item.childNodes;
+                let spoofedNodes = new FakeNodeList();
+                for (let child of nodes) {
+                    if (checkForStateFarmChildren(child)) { // holy speedup
+                        let fakeNode = wipeNode(child.cloneNode(true));
+                        spoofedNodes.push(fakeNode);
+                    } else {
+                        spoofedNodes.push(child.cloneNode(true));
+                    };
+                };
+                return spoofedNodes;
+            },
+            '_length_': function (item) {
+                if (item instanceof FakeNodeList) {
+                    return item.length;
+                } else {
+                    log("Hooked length, arg:", item);
+                    return item.length;
+                };
+            },
+            // 'addEventListener': function(item, stringStart, stringLen, listener) {
+            //     log("Hooked addEventListener", item, stringStart, stringLen, listener);
+            //     item.addEventListener('pointermove', (...args) => {
+            //         // log("Called pointermove listener with args:", args);
+            //         listener(...args);
+            //     });
+            // },
+            'appendChild': function (item, child) {
+                console.log(child.innerText);
+                item.appendChild(child);
+            },
+            'innerText': () => {},
+            '_has_': () => true,
+            'isTrusted': () => true,
+        };
+
+        for (const key in wbg) {
+            if (blockedCalls.some(call => key.includes(call))) {
+                log(`${key}: Patching blank`);
+                wbg[key] = function (...args) {
+                    console.warn(`Blocked call to ${key}`, args);
+                };
+            };
+            // log(`wbg.${key}:`, wbg[key].toString());
+            if (exceptions.some(exception => key.includes(exception))) {
+                log(`${key}: Skipping patch (raw: ${wbg[key].toString()})`);
+                continue;
+            } else if (Object.keys(rewrites).some(rew => key.includes(rew))) {
+                log(`${key}: Custom patch`);
+                wbg[key] = rewrites[Object.keys(rewrites).find(rew => key.includes(rew))];
+            } else {
+                log(`${key}: Default patch (print args)`)
+                wbg[key] = function () {
+                    log("Called", key);
+                    log("Args", arguments);
+                    console.warn(`Called unpatched ${key}! Something probably broke. Args:`, arguments, "\nNot allowing passthrough!");
+                    // return wbg[key].apply(this, arguments);
+                };
+            };
+        };
+
+       // ss.WASMOBJECT = { response, importObj };
+        window.WASMOBJECT = { response, importObj };
+
+        // debugger;
+        //log(`importObj wbg hooks:`, importObj.wbg);
+
+        // instantiate patched WASM
+        return WebAssembly.instantiate(bytes, importObj);
+    };
+
+    console.log("[sfc] WASM hook installed.");
+
+  //:(
+
+
+
+
   const replays = []; //all loaded replays
 
   function createFuncsExternal(cf) {
@@ -484,27 +682,33 @@
     );
 
     //inj("iO.PS=WN.position.x,iO.oS=WN.position.y,iO.mS=WN.position.z,", "");
+
+    console.log(H.camera);
+    const regexFix2025GR = `${H.me}.${H.x}=${H.CAMERA}.position.x,${H.me}.${H.y}=${H.CAMERA}.position.y,${H.me}.${H.z}=${H.CAMERA}.position.z,`.replaceAll("$", "\\$");
+    console.log(regexFix2025GR);
     const makePlayerPositionEqualCameraPositionForSomeFUCKINGReasonMatch =
-      js.match(
-        H.me +
-          "\\." +
-          H.x +
+      js.match(regexFix2025GR);
+    console.error("MEGA");
+    console.error(makePlayerPositionEqualCameraPositionForSomeFUCKINGReasonMatch);
+    /*
+      js.match("\\("+
+        H.me +"\\." +H.x +
           "=" +
           H.CAMERA +
-          "\\.position\\.x," +
+          "\\.position\\.x\\),\\(" +
           H.me +
           "\\." +
           H.y +
           "=" +
           H.CAMERA +
-          "\\.position\\.y," +
+          "\\.position\\.y\\),\\(" +
           H.me +
           "\\." +
           H.z +
           "=" +
           H.CAMERA +
-          "\\.position\\.z,",
-      );
+          "\\.position\\.z\\),",
+      );*/
     inj(
       makePlayerPositionEqualCameraPositionForSomeFUCKINGReasonMatch[0],
       "!window.bReplaying?(" +
@@ -551,8 +755,8 @@
 
     const loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch = js.match(/(function\((e),t\)\{)(if\(console\.log\("loadMap\(\)"\))/);
     console.log(loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch);
-    inj(loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch[0], 
-      `${loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch[1]}if(window.bReplaying && window.rePlayMapIdxOverride >= 0) 
+    inj(loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch[0],
+      `${loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch[1]}if(window.bReplaying && window.rePlayMapIdxOverride >= 0)
       ${loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch[2]}=window.rePlayMapIdxOverride;${loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch[3]}`
     );
 
@@ -569,16 +773,33 @@
     inj(setSpectatorRotationToMeRotationTooForSomeFUCKINGSHITReasonWHYWouldYouDoThatMatch[0], test25);
 
 
+
     //,fO.SN=Math.radAdd(fO.SN,-i*t),fO.FN=Math.clamp(fO.FN+n*CM.mouseInvert*-t,-1.5,1.5)
+    /* BROKEN 2025 -- hopefully fixed now....
     const setRotationsInputHandelerMatch = js.match(`${H.me}\\.${H.yaw}=Math\\.radAdd.+?(?=Math)Math\\.clamp.+?(?=})`);
     console.log(setRotationsInputHandelerMatch);
     const s2f = setRotationsInputHandelerMatch[0].replaceAll(H.me, "window.rotationGrabs");
-    inj(setRotationsInputHandelerMatch[0], 
+    inj(setRotationsInputHandelerMatch[0],
       `${s2f},!window.bReplaying&&(${setRotationsInputHandelerMatch[0]})`
-    );
+    );*/
+
+    unsafeWindow.onSpecUpdate=function(camera){
+      console.log("spec update");
+    }
+
+
     unsafeWindow.rotationGrabs = {};
     unsafeWindow.rotationGrabs[H.pitch] = 0;
     unsafeWindow.rotationGrabs[H.yaw] = 0;
+
+    document.getElementById("canvas").addEventListener("mousemove", (e)=>{
+      //console.log(localStore.getItem("mouseSpeed"))
+      var mult = Math.pow(localStore.getItem("mouseSpeed") * 1e-3, 2);
+      let mx = event.movementX;
+      let my = event.movementY;
+      unsafeWindow.rotationGrabs[H.pitch] = Math.clamp(unsafeWindow.rotationGrabs[H.pitch] + -my * localStore.getItem("mouseInvert") * mult, -1.5, 1.5);
+      unsafeWindow.rotationGrabs[H.yaw] =Math.radAdd(unsafeWindow.rotationGrabs[H.yaw], -mx * mult);
+    });
 
     //;else{var t=0,i=0,n=0;Pb&gx.left
     const setDeltaVectorToDirOfPlayerMatch = js.match(/;else\{var [a-zA-Z$_,]+=0,[a-zA-Z$_,]+=0,[a-zA-Z$_,]+=0;[a-zA-Z$_,]+&[a-zA-Z$_,]+\.left.+?(?=var)/);
@@ -601,6 +822,28 @@
     const injectione = `${doNotSelectMyPlayerForFindNextPlayerInTheSpectatorClass[1]}(window.bReplaying||${doNotSelectMyPlayerForFindNextPlayerInTheSpectatorClass[2]})`;
     inj(doNotSelectMyPlayerForFindNextPlayerInTheSpectatorClass[0], injectione);
     }
+
+
+    //fancy stuff that might come in handy later...
+    H.ccVar = js.match(/var (..)=\{.:100,.:101,/)[1];
+    console.log(H.ccVar);
+    inj("window.onloadingcomplete=function(){", `window.onloadingcomplete=function(){window.grabCC=()=>{return ${H.ccVar};};window.setCC=(cc)=>{${H.ccVar}=cc};`);
+
+    unsafeWindow.remapCC = (oldCC)=>{
+      console.log("remap "+oldCC);
+      return oldCC;
+    }
+
+    //IST if they change that length I will kill all of you
+    //inject ws1 onmsg
+    const unPack1Match = js.match(/\.data\),([a-zA-Z$_,]+\.unPackInt8U\(\))\)\{/)
+    console.error(unPack1Match);
+    inj(unPack1Match[0] ,`.data),window.remapCC(${unPack1Match[1]})){`)
+    //inj(/switch(...init\(\),..\.unPackInt8U/)
+    //ws2 onmsg
+    const unPack2Match = js.match(/([a-zA-Z$_,]+\.unPackInt8U\(\));switch/);
+        console.error(unPack2Match);
+    inj(unPack2Match[0] ,`window.remapCC(${unPack2Match[1]});switch`)
   }
   //doing this here because where else?
   window.recordMyplayer = function(player){
@@ -710,7 +953,7 @@
       //record map
       if(pack.peekByte() == /*ss.SERVERCODES.gameJoined*/C.gameJoined){
         const d = pack.getDataAsByteArray();
-        let idx = 1+1+1+1; //commcode + meId +myTeam +gameType 
+        let idx = 1+1+1+1; //commcode + meId +myTeam +gameType
         let mapIdx = d[idx];
         this.mapIdx = mapIdx;
         this.map = ss.MAPS[mapIdx].filename;
@@ -1056,7 +1299,7 @@
       //write body
       //there has to be a better way to do this but cba
       for (let i = 0; i < bodyComp.length; i++) {
-        v.setUint8(offs+i, bodyComp[i]) //= bodyComp[i];    
+        v.setUint8(offs+i, bodyComp[i]) //= bodyComp[i];
       }
       //console.log(content2);
       return content2;
@@ -1232,7 +1475,7 @@
   window.setReplayUIVis = setReplayUIVis;
   window.rePlayMapIdxOverride = -1;
 
-  setInterval(()=> 
+  setInterval(()=>
   window.extra = {
     C,CN,H
   },1000);
@@ -1461,8 +1704,8 @@
     textDiv.appendChild(l2);
     */
     }
-    
-      
+
+
 
     //TODO: ADD BUTTÓNS
 
