@@ -22,6 +22,8 @@
   let injectSuccess = 0, maxInjects = 0;
   let isClientReady = false;
   let mapEditJS = "UNKNOWN";
+  let realCC = {};
+  let realCCString = "TBF";
   {
     LM();
     function LM() {
@@ -98,6 +100,20 @@
       mapEditJS = fetchTextContent("https://shellshock.io/js/mapEdit.js");
       console.log("found map edit js ");
       console.log(mapEditJS);
+
+      //NOTE TO BWD: This method is NOT used in sfc development in any way.
+      //Patching this would literally only break this one legit mod.
+      function parseRealCC(){
+        let regex = /([a-zA-Z$_]+)_: 1(..)/g;
+        const matches = [...mapEditJS.matchAll(/([a-zA-Z$_]+)_: 1(..)/g)];
+        const ccObject = {};
+        matches.forEach((arr)=>{
+          ccObject[arr[1]] = Number(arr[2]);
+        });
+        return ccObject;
+      }
+      realCC = parseRealCC();
+      realCCString = JSON.stringify(realCC);
 
       function getCommCode(name){
         // addPlayer_: 121
@@ -224,6 +240,9 @@
 
         let onMessage2Mod = onMessage2Match[1];
 
+        const unPack1Match = js.match(/\.data\),([a-zA-Z$_,]+\.unPackInt8U\(\))\)\{/)
+        onMessage2Mod = onMessage2Mod.replaceAll(unPack1Match[0] ,`.data),window.remapCC(${unPack1Match[1]})){`)
+
         let onMessage1Mod = onMessageMatch[1].originalReplaceAll(
           "syncMe",
           "replacedValueSyncMe",
@@ -235,6 +254,13 @@
         onMessage1Mod = onMessage1Mod.originalReplaceAll(
           "hitMeHardBoiled",
           "nononono",
+        );
+        //T!!!!!!!!!!!!!!!!!!!!!!!!
+        const unPack2Match = js.match(/=([a-zA-Z$_,]+\.unPackInt8U\(\));switch\(/);
+        //inj(unPack2Match[0] ,`=window.remapCC(${unPack2Match[1]});console.log("nigger2");switch(`)
+        onMessage1Mod = onMessage1Mod.originalReplaceAll(
+          unPack2Match[0],
+          `=window.remapCC(${unPack2Match[1]});switch(`,
         );
 
         //do map array
@@ -384,34 +410,6 @@
         const formatBytes = (bytes, base = 10) => ([ ...bytes]).map(b => b.toString(base).padStart(base === 16 ? 2 : 3, '0')).join(' ');
 
         let index = 0;
-        // loop through all replacements
-        /* for (const { pattern, replacement } of replacements) {
-            // search and patch
-            for (let i = 0; i < bytes.length - pattern.length; i++) {
-                if (pattern.every((b, j) => bytes[i + j] === b)) {
-                    let before = bytes.slice(i, i + pattern.length);
-                    let before10 = formatBytes(before, 10);
-                    let before16 = formatBytes(before, 16);
-
-                    for (let j = 0; j < replacement.length; j++) {
-                        bytes[i + j] = replacement[j];
-                    };
-
-                    let after = bytes.slice(i, i + replacement.length);
-                    let after10 = formatBytes(after, 10);
-                    let after16 = formatBytes(after, 16);
-
-                    log(
-                        `[sfc] Found loop at offset ${i} (hex: 0x${i.toString(16)}), patching ${index}...\n` +
-                        `Before: ${before10}\n` +
-                        `After:  ${after10}\n` +
-                        `Before (hex): ${before16}\n` +
-                        `After  (hex):  ${after16}\n`
-                    );
-                };
-            };
-            index++;
-        }; */
 
         const end = performance.now();
 
@@ -830,20 +828,29 @@
     inj("window.onloadingcomplete=function(){", `window.onloadingcomplete=function(){window.grabCC=()=>{return ${H.ccVar};};window.setCC=(cc)=>{${H.ccVar}=cc};`);
 
     unsafeWindow.remapCC = (oldCC)=>{
-      console.log("remap "+oldCC);
+      //console.log("remapCC");
+      if(bReplaying && RePlayer && RePlayer.activeReplay.realCC){
+        const name = getKeyByValue(RePlayer.activeReplay.realCC, oldCC);
+        //console.log("remapped " + oldCC +" to " + realCC[name]);
+        return realCC[name];
+      }
       return oldCC;
     }
 
     //IST if they change that length I will kill all of you
     //inject ws1 onmsg
+    //MOVED TO onmessage mods!!!!! THEY ARE ACTIVE ON REPLAYS, NOT THIS!!!
+    /*
     const unPack1Match = js.match(/\.data\),([a-zA-Z$_,]+\.unPackInt8U\(\))\)\{/)
     console.error(unPack1Match);
-    inj(unPack1Match[0] ,`.data),window.remapCC(${unPack1Match[1]})){`)
+    inj(unPack1Match[0] ,`.data),window.remapCC(${unPack1Match[1]})){`)*/
     //inj(/switch(...init\(\),..\.unPackInt8U/)
     //ws2 onmsg
-    const unPack2Match = js.match(/([a-zA-Z$_,]+\.unPackInt8U\(\));switch/);
+    /*
+    const unPack2Match = js.match(/=([a-zA-Z$_,]+\.unPackInt8U\(\));switch\(/);
         console.error(unPack2Match);
-    inj(unPack2Match[0] ,`window.remapCC(${unPack2Match[1]});switch`)
+    inj(unPack2Match[0] ,`=window.remapCC(${unPack2Match[1]});console.log("nigger2");switch(`)*/
+    //inj("Tc.unPackInt8U();", "Tc.unPackInt8U();console.log(\"nigger\");")
   }
   //doing this here because where else?
   window.recordMyplayer = function(player){
@@ -943,6 +950,7 @@
       this.lastPacketCache = null;
       this.map = "UNKNOWNMAP";
       this.mapIdx = -1;
+      this.realCC = realCC;
     }
 
     recordPacket(data, type) {
@@ -1278,7 +1286,7 @@
   }
 
   class FileManager {
-    static SAVE_VERSION = 3;
+    static SAVE_VERSION = 4;
 
     static createFileBytes(replay) {
       replay.streamer.releaseCurrent();
@@ -1296,6 +1304,8 @@
       //new in 3: map name
       let x = this.writeString(v, replay.map, offs);
       offs=x;
+      //new in 4: real cc
+      offs=this.writeString(v, JSON.stringify(replay.realCC), offs);
       //write body
       //there has to be a better way to do this but cba
       for (let i = 0; i < bodyComp.length; i++) {
@@ -1350,6 +1360,8 @@
       val += 8; //replayStartTime: biguint64
       val+=1; //map string len
       val+=replay.map.length; //map string char bytes
+      val+=1; //realCC string len
+      val+=realCCString.length; //realCC string char bytes
       return val;
     }
 
@@ -1414,6 +1426,13 @@
         parsedReplay.map = res.parsedString;
         parsedReplay.mapIdx = findMapIdx(res.parsedString);
         console.log("found map " + parsedReplay.map + " with idx " + parsedReplay.mapIdx);
+      }
+      //realCC
+      if(ver>=4){
+        let res = this.readString(v, offs);
+        offs = res.offs;
+        parsedReplay.realCC = JSON.parse(res.parsedString);
+        console.log("replay shipped with real cc: " + parsedReplay.realCC);
       }
       //done with head. from now on, it will only be the packets.
       const packDatArray = new Uint8Array(v.byteLength-offs);
@@ -1961,5 +1980,10 @@ function getTimeString(millis){
   const msFraction = millis%1000;
   //if(minutes<1) return seconds+"s";
   return `${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}.${String(msFraction).padStart(3,'0')}`;
+}
+
+//https://stackoverflow.com/questions/9907419/how-to-get-a-key-in-a-javascript-object-by-its-value
+function getKeyByValue(object, value) {
+  return Object.keys(object).find(key => object[key] === value);
 }
 })();
