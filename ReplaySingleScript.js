@@ -6,7 +6,7 @@
 // @author       Sq
 // @description  Replay shell games
 // @match        https://shellshock.io/*
-// @grant        none
+// @grant        unsafeWindow
 // @run-at       document-start
 // @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js
 // ==/UserScript==
@@ -81,8 +81,8 @@
       };
       const createAnonFunction = function (name, func) {
         const funcName = getScrambled();
-        window[funcName] = func;
-        F[name] = window[funcName];
+        unsafeWindow[funcName] = func;
+        F[name] = unsafeWindow[funcName];
         functionNames[name] = funcName;
       };
       const fetchTextContent = function (url) {
@@ -537,7 +537,7 @@
         };
 
        // ss.WASMOBJECT = { response, importObj };
-        window.WASMOBJECT = { response, importObj };
+        unsafeWindow.WASMOBJECT = { response, importObj };
 
         // debugger;
         //log(`importObj wbg hooks:`, importObj.wbg);
@@ -853,7 +853,7 @@
     //inj("Tc.unPackInt8U();", "Tc.unPackInt8U();console.log(\"nigger\");")
   }
   //doing this here because where else?
-  window.recordMyplayer = function(player){
+  unsafeWindow.recordMyplayer = function(player){
     const buffer = new ArrayBuffer(9);
     const v = new DataView(buffer);
     let offs = 0;
@@ -869,15 +869,15 @@
   function playBackMyPlayerPacket(arr){
     //console.log("PBMP: ");
     //console.log(arr);
-    if(window.replayMe){
+    if(unsafeWindow.replayMe){
       const v = new DataView(arr.buffer);
-      window.replayMe[H.controlkeysPlayerVar] = v.getUint8(0);
+      unsafeWindow.replayMe[H.controlkeysPlayerVar] = v.getUint8(0);
 
       let offs = 0;
       offs += 1;
-      window.replayMe[H.yaw] = v.getFloat32(offs);
+      unsafeWindow.replayMe[H.yaw] = v.getFloat32(offs);
       offs+=4;
-      window.replayMe[H.pitch] = v.getFloat32(offs);
+      unsafeWindow.replayMe[H.pitch] = v.getFloat32(offs);
       offs+=4;
     }
   }
@@ -1154,7 +1154,7 @@
       ss.removePlayer(play);
     });
   }
-  window.remAllP = removeAllPlayers;
+  unsafeWindow.remAllP = removeAllPlayers;
 
   class RePlayer {
     static insertReplay(replay) {
@@ -1164,7 +1164,7 @@
       this.bIsPaused = true;
       this.bSkipDesired = false;
       this.iSkipAmount = 0;
-      window.rePlayMapIdxOverride = findMapIdx(replay.map);
+      unsafeWindow.rePlayMapIdxOverride = findMapIdx(replay.map);
     }
 
     static pause(){
@@ -1484,18 +1484,18 @@
   }
 
   //-----------------------------------------------------------------------------------------------------------------------------------------
-  window.bReplaying = false;
-  window.replayer = RePlayer;
-  window.save = FileManager;
-  //window.rply = rePlaytemp;
-  window.rplys = replays;
-  window.createGUI = createGUI;
-  window.record = ReCorder;
-  window.setReplayUIVis = setReplayUIVis;
-  window.rePlayMapIdxOverride = -1;
+  unsafeWindow.bReplaying = false;
+  unsafeWindow.replayer = RePlayer;
+  unsafeWindow.save = FileManager;
+  //unsafeWindow.rply = rePlaytemp;
+  unsafeWindow.rplys = replays;
+  unsafeWindow.createGUI = createGUI;
+  unsafeWindow.record = ReCorder;
+  unsafeWindow.setReplayUIVis = setReplayUIVis;
+  unsafeWindow.rePlayMapIdxOverride = -1;
 
   setInterval(()=>
-  window.extra = {
+  unsafeWindow.extra = {
     C,CN,H
   },1000);
   //------------------------------------------------------------------------------------------------------------------------------------------
