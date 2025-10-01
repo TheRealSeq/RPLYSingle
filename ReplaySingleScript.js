@@ -1206,9 +1206,7 @@
       ) {
         const packet = //packets.shift(); //grab first packet);
           this.activeReplay.streamer.getPacket(this.iReplayPacketIdx++);
-        //console.log(packet);
         const delayDur = packet.time - this.iReplayRelativeTime;
-        //console.log("sleep for: " + delayDur);
         if(delayDur < 0){
           this.rePlayPacket(packet);
           continue;
@@ -1224,9 +1222,16 @@
         if(this.bSkipDesired){
           this.bSkipDesired = false;
           this.iReplayRelativeTime+=this.iSkipAmount;
-          if(this.iSkipAmount<0) this.iReplayPacketIdx = this.findPacketIdxForTime(this.iReplayRelativeTime);
+          if(this.iSkipAmount<0)
+          {
+            RePlayer.jumpToPacket(Math.max(25, this.findPacketIdxForTime(this.iReplayRelativeTime))); //hack, but maybe don't load in again...
+          }
         }
       }
+    }
+    static jumpToPacket(packetIdx){
+        this.iReplayPacketIdx = packetIdx;
+        this.iReplayRelativeTime = this.activeReplay.streamer.getPacket(this.iReplayPacketIdx);
     }
 
     static rePlayPacket(packet){
@@ -1318,8 +1323,8 @@
     //returns offset of string write
     static writeString(v, string, offs){
       //let offs = 0;
-      v.setUint8(offs, string.length);
-      offs++;
+      v.setUint16(offs, string.length);
+      offs+=2;
       for(let i = 0; i<string.length; ++i){
         v.setUint8(offs, string.charCodeAt(i));
         offs++;
@@ -1328,13 +1333,15 @@
     }
 
     static readString(v, offs){
-      let len = v.getUint8(offs);
+      let len = v.getUint16(offs);
+      console.log("str len: " + len);
       let parsedString = "";
-      offs++;
+      offs+=2;
       for(let i = 0; i<len; ++i){
         parsedString+= String.fromCharCode(v.getUint8(offs));
         offs++;
       }
+      console.log("readString(), " + parsedString);
       return {parsedString, offs};
     }
 
@@ -1358,9 +1365,9 @@
     static getHeadLength(replay) {
       let val = 1; //version
       val += 8; //replayStartTime: biguint64
-      val+=1; //map string len
+      val+=2; //map string len
       val+=replay.map.length; //map string char bytes
-      val+=1; //realCC string len
+      val+=2; //realCC string len
       val+=realCCString.length; //realCC string char bytes
       return val;
     }
