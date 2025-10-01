@@ -2,13 +2,14 @@
 // @name         SRPLYSingle
 // @namespace    sM
 // @license      GPL-3.0
-// @version      0.9.0
+// @version      0.9.1
 // @author       Sq
 // @description  Replay shell games
 // @match        https://shellshock.io/*
 // @grant        unsafeWindow
 // @run-at       document-start
 // @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js
+// @updateURL    https://raw.githubusercontent.com/TheRealSeq/RPLYSingle/refs/heads/main/ReplaySingleScript.js
 // ==/UserScript==
 
 (function () {
