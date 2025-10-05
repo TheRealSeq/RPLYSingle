@@ -2,7 +2,7 @@
 // @name         SRPLYSingle
 // @namespace    sM
 // @license      GPL-3.0
-// @version      0.9.1
+// @version      0.9.2
 // @author       Sq
 // @description  Replay shell games
 // @match        https://shellshock.io/*
@@ -520,7 +520,7 @@
                 };
             };
             // log(`wbg.${key}:`, wbg[key].toString());
-            if (exceptions.some(exception => key.includes(exception))) {
+            if (true || exceptions.some(exception => key.includes(exception))) {
                 log(`${key}: Skipping patch (raw: ${wbg[key].toString()})`);
                 continue;
             } else if (Object.keys(rewrites).some(rew => key.includes(rew))) {
