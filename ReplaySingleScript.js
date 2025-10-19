@@ -2,7 +2,7 @@
 // @name         SRPLYSingle
 // @namespace    sM
 // @license      GPL-3.0
-// @version      0.9.2
+// @version      0.9.3
 // @author       Sq
 // @description  Replay shell games
 // @match        https://shellshock.io/*
@@ -10,6 +10,7 @@
 // @run-at       document-start
 // @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js
 // @updateURL    https://raw.githubusercontent.com/TheRealSeq/RPLYSingle/refs/heads/main/ReplaySingleScript.js
+// @downloadURL  https://raw.githubusercontent.com/TheRealSeq/RPLYSingle/refs/heads/main/ReplaySingleScript.js
 // ==/UserScript==
 
 (function () {
@@ -750,7 +751,7 @@
     inj(cckmatch[0], "true");
 
     const playerUpdateMatch = js.match(H._playerThing + "\\.prototype\\."+H._update+"=function\\([a-zA-Z$_,]+\\)\\{");
-    inj(playerUpdateMatch[0], playerUpdateMatch[0]+"if(this.id==" + H.meid+")window.replayMe = this; if(this.id==" + H.meid+"&&!window.bReplaying){this." + H.controlkeysPlayerVar + "=" + H.CONTROLKEYS+";window.recordMyplayer(this);}");
+    inj(playerUpdateMatch[0], playerUpdateMatch[0]+"if(this.id==" + H.meid+")window.replayMe = this; if(this.id==" + H.meid+"&&!window.bReplaying){this." + H.controlkeysPlayerVar + "=" + H.CONTROLKEYS+";/*window.recordMyplayer(this);*/}");
 
     const loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch = js.match(/(function\((e),t\)\{)(if\(console\.log\("loadMap\(\)"\))/);
     console.log(loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch);
@@ -821,6 +822,12 @@
     const injectione = `${doNotSelectMyPlayerForFindNextPlayerInTheSpectatorClass[1]}(window.bReplaying||${doNotSelectMyPlayerForFindNextPlayerInTheSpectatorClass[2]})`;
     inj(doNotSelectMyPlayerForFindNextPlayerInTheSpectatorClass[0], injectione);
     }
+
+
+    const renderMatch = js.match(/..\.render\(\),..\.render\(\)/);
+    console.log("render match: ");
+    console.log(renderMatch);
+    inj(renderMatch[0], renderMatch[0]+",window.replayMe&&!window.bReplaying&&window.recordMyplayer(window.replayMe)");
 
 
     //fancy stuff that might come in handy later...
