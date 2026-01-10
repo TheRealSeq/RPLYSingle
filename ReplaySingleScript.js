@@ -188,6 +188,11 @@
         let injectionString = "";
 
         const modifyJS = function (find, replace) {
+            if(replace.includes("&")){
+                console.error(find);
+                console.error(replace);
+                //return;
+            }
           let oldJS = js;
           ++maxInjects;
           js = js.originalReplace(find, replace);
@@ -214,10 +219,11 @@
         //console.log(js.match(gameSocketVar+"\\.onmessage=(function\\(([a-zA-Z$_,]+)\\)\\{.+?(?=\\},"+ gameSocketVar + "))"));
         const onMessageMatch = js.match(
           H.ws +
-            "\\.onmessage=(function\\(([a-zA-Z$_,]+)\\)\\{.+?(?=," +
-            H.ws +
-            "))",
-        );
+            //"\\.onmessage=(function\\(([a-zA-Z$_,]+)\\)\\{.+?(?=" +//"\\.shift();\\}\\})"
+            "\\.onmessage=(function\\(([a-zA-Z$_,]+)\\)\\{.+?),"+H.ws+"\\.onclose"
+            //"\\),"+H.ws +
+            //"))",
+        ); console.log(onMessageMatch);
         const onMessageMatch2 = js.match(
           H.ws +
             "\\.onmessage=(function\\([a-zA-Z$_,]+\\)\\{).+?(?=," +
@@ -232,6 +238,7 @@
         //;break;case nc.F:_D()}}
         const matchIns = `case [a-zA-Z$_,]+\\.[a-zA-Z$_,]+:${sendGameOptionsVName}\\(\\)`;
         const finalRegex = H.ws + `\\.onmessage=(function\\(([a-zA-Z$_,]+)\\)\\{switch.+?(?=${matchIns})${matchIns}\\}\\})`;
+        //const finalRegex = H.ws + `\\.onmessage=(function\\(([a-zA-Z$_,]+)\\)\\{switch.+?(?=\.shift\\(\\))\\}\\})`;
         console.log(finalRegex);
         const onMessage2Match = js.match(
           finalRegex
@@ -325,8 +332,13 @@
 
         console.log(onMessage1Mod);
 
+        //onMessage1Mod= onMessageMatch[1]
+
+         // onMessage1Mod+="};true";
+
         H.onMessage = onMessage1Mod;
         H.onMessage2 = onMessage2Match[1];
+         H.onMessage = onMessageMatch[1];
 
         //this was causing issues
         delete H.BabylonVersion;
@@ -355,10 +367,12 @@
         );
 
         //this one might be risky...
+        //RISKY IT WAS! TODO: FIX
         //const beforeNotPlayingInIFramMatch = js.match(/subtree:!0\}\);var [a-zA-Z$_,]+=\(\)=>\{/)
         const beforeNotPlayingInIFramMatch = js.match(/console\.log\("loadResources\(\)"\),[a-zA-Z$_,]+\([a-zA-Z$_,]+\),function\([a-zA-Z$_,]+,[a-zA-Z$_,]+\)\{/); //heh no iframe anymore. eh still gonna keep title bc doesnt matter fuck you
         modifyJS(beforeNotPlayingInIFramMatch[0], beforeNotPlayingInIFramMatch[0] + `window["${functionNames.retrieveFunctions}"]({${injectionString}},true);`);
         // console.log(js);
+          console.error(injectionString);
 
         injExternal(js, modifyJS); //fuck you puppy
 
@@ -419,8 +433,8 @@
 
         const wbg = importObj.wbg;
 
-        let blockedCalls = ["sethref", "setInterval"];
-        let exceptions = ["SELF", "WINDOW", "GLOBAL_THIS", "GLOBAL", "is_undefined", "init_", "document", "createElement", "settextContent", "body", "instanceof_Window", "instanceof_HtmlCanvasElement", "nodeType", "_item_", "_textContent_", "_now_", "_closure_", "_string_", "_number_", "movementX", "movementY", "_new_", "addEventListener", "instanceof_HtmlElement", "_get_", "_set_"];
+                let blockedCalls = ["sethref", "setInterval"];
+        let exceptions = ["SELF", "WINDOW", "GLOBAL_THIS", "GLOBAL", "is_undefined", "init_", "document", "createElement", "settextContent", "body", "instanceof_Window", "instanceof_HtmlCanvasElement", "nodeType", "_item_", "_textContent_", "_now_", "_closure_", "_string_", "_number_", "movementX", "movementY", "_new_", "addEventListener", "instanceof_HtmlElement", "_get_", "_set_", "_cast_", "_wbindgenis", "_wbindgennumberget"];
 
         // https://stackoverflow.com/questions/2712136/how-do-i-make-this-loop-all-children-recursively
 
@@ -497,6 +511,10 @@
                     return item.length;
                 };
             },
+            'appendChild': function (parent, child) {
+                console.warn("Attempted to append", child, "to", parent);
+                parent.appendChild(child);
+            },
             // 'addEventListener': function(item, stringStart, stringLen, listener) {
             //     log("Hooked addEventListener", item, stringStart, stringLen, listener);
             //     item.addEventListener('pointermove', (...args) => {
@@ -504,10 +522,6 @@
             //         listener(...args);
             //     });
             // },
-            'appendChild': function (item, child) {
-                console.log(child.innerText);
-                item.appendChild(child);
-            },
             'innerText': () => {},
             '_has_': () => true,
             'isTrusted': () => true,
@@ -521,7 +535,7 @@
                 };
             };
             // log(`wbg.${key}:`, wbg[key].toString());
-            if (true || exceptions.some(exception => key.includes(exception))) {
+            if (exceptions.some(exception => key.includes(exception))) {
                 log(`${key}: Skipping patch (raw: ${wbg[key].toString()})`);
                 continue;
             } else if (Object.keys(rewrites).some(rew => key.includes(rew))) {
@@ -532,8 +546,8 @@
                 wbg[key] = function () {
                     log("Called", key);
                     log("Args", arguments);
-                    console.warn(`Called unpatched ${key}! Something probably broke. Args:`, arguments, "\nNot allowing passthrough!");
-                    // return wbg[key].apply(this, arguments);
+                    console.warn(`Called unpatched ${key}! Something probably broke. Args:`, arguments, "\nAllowing passthrough!");
+                    return wbg[key].apply(this, arguments);
                 };
             };
         };
@@ -751,7 +765,7 @@
     inj(cckmatch[0], "true");
 
     const playerUpdateMatch = js.match(H._playerThing + "\\.prototype\\."+H._update+"=function\\([a-zA-Z$_,]+\\)\\{");
-    inj(playerUpdateMatch[0], playerUpdateMatch[0]+"if(this.id==" + H.meid+")window.replayMe = this; if(this.id==" + H.meid+"&&!window.bReplaying){this." + H.controlkeysPlayerVar + "=" + H.CONTROLKEYS+";/*window.recordMyplayer(this);*/}");
+    //inj(playerUpdateMatch[0], playerUpdateMatch[0]+"if(this.id==" + H.meid+")window.replayMe = this; if(this.id==" + H.meid+"&&!window.bReplaying){this." + H.controlkeysPlayerVar + "=" + H.CONTROLKEYS+";/*window.recordMyplayer(this);*/}");
 
     const loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch = js.match(/(function\((e),t\)\{)(if\(console\.log\("loadMap\(\)"\))/);
     console.log(loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch);
@@ -833,7 +847,7 @@
     //fancy stuff that might come in handy later...
     H.ccVar = js.match(/var (..)=\{.:100,.:101,/)[1];
     console.log(H.ccVar);
-    inj("window.onloadingcomplete=function(){", `window.onloadingcomplete=function(){window.grabCC=()=>{return ${H.ccVar};};window.setCC=(cc)=>{${H.ccVar}=cc};`);
+    inj("window.onloadingcomplete=async function(){", `window.onloadingcomplete=async function(){window.grabCC=()=>{return ${H.ccVar};};window.setCC=(cc)=>{${H.ccVar}=cc};`);
 
     unsafeWindow.remapCC = (oldCC)=>{
       //console.log("remapCC");
