@@ -766,8 +766,11 @@
 
     inj(cckmatch[0], "true");
 
-    const playerUpdateMatch = js.match(H._playerThing + "\\.prototype\\."+H._update+"=function\\([a-zA-Z$_,]+\\)\\{");
-    //inj(playerUpdateMatch[0], playerUpdateMatch[0]+"if(this.id==" + H.meid+")window.replayMe = this; if(this.id==" + H.meid+"&&!window.bReplaying){this." + H.controlkeysPlayerVar + "=" + H.CONTROLKEYS+";/*window.recordMyplayer(this);*/}");
+      console.error(H._playerThing);
+            console.error(H._update);
+
+    const playerUpdateMatch = js.match(H._playerThing + "\\.prototype\\."+H._update.replaceAll("$", "\\$")+"=function\\([a-zA-Z$_,]+\\)\\{");
+    inj(playerUpdateMatch[0], playerUpdateMatch[0]+"if(this.id==" + H.meid+")window.replayMe = this; if(this.id==" + H.meid+"&&!window.bReplaying){this." + H.controlkeysPlayerVar + "=" + H.CONTROLKEYS+";/*window.recordMyplayer(this);*/}");
 
     const loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch = js.match(/(function\((e),t\)\{)(if\(console\.log\("loadMap\(\)"\))/);
     console.log(loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch);
