@@ -336,9 +336,8 @@
 
          // onMessage1Mod+="};true";
 
-        H.onMessage = onMessage1Mod;
         H.onMessage2 = onMessage2Match[1];
-         H.onMessage = onMessageMatch[1];
+        //H.onMessage = onMessage1Mod;
 
         //this was causing issues
         delete H.BabylonVersion;
@@ -360,10 +359,13 @@
           }
         }
         console.log(injectionString);
+          unsafeWindow.setOM1 = (func)=>{
+              ss.onMessage = func;
+          }
         //oh...
         modifyJS(
           H.SCENE + ".render",
-          `window["${functionNames.retrieveFunctions}"]({${injectionString}},true)||${H.SCENE}.render`,
+          `window["${functionNames.retrieveFunctions}"]({${injectionString}},true)||window.setOM1(${onMessage1Mod})||${H.SCENE}.render`,
         );
 
         //this one might be risky...
