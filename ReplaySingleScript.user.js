@@ -13,6 +13,13 @@
 // @downloadURL  https://raw.githubusercontent.com/TheRealSeq/RPLYSingle/refs/heads/main/ReplaySingleScript.user.js
 // ==/UserScript==
 
+/*
+  NOTE TO SELF:
+  DO NOT MODIFY ReplaySingleScript.user.js!
+  IT WILL BE OVERWRITTEN!
+  MODIFY ReplaySingleScript.js, THEN USE precommit.sh TO UPDATE THE .user.js!
+  I WILL MOVE THIS TO AN ACTION LATER SO WATCH OUT!
+*/
 (function () {
   let functionNames = []; // fuck you puppy
   let H = {}; //deobf names. Fuck you puppy.
@@ -1981,6 +1988,12 @@
   function showMessageDialog(title, text){
     const html = `<div class="popup_window popup_sm roundme_md centered" id="genericPopup" style=""><div><button class="roundme_sm popup_close clickme"><i class="fas fa-times text_white fa-2x"></i></button> <h3 id="popup_title" class="roundme_sm shadow_blue4 nospace text_white">${title}</h3></div> <div class="popup_sm_content">${text}</div> <div id="btn_horizontal" class="f_center"><button class="ss_button btn_red bevel_red width_sm" style="display: none;"></button> <button class="ss_button btn_green bevel_green width_sm">OK</button></div> </div>`;
     document.getElementById("app").innerHTML+=html;
+  }
+
+  function showPopup(title, text, button){
+    vueApp.showGenericPopup("", "", button, false);
+    document.querySelectorAll("#popup_title")[19].innerText = title;
+    document.getElementById("genericPopup").children[1].innerText = text;
   }
 
 
