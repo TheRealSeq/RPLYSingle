@@ -410,7 +410,7 @@
 
 
   //:(
-
+  {
   const log = console.log;
 
     WebAssembly.instantiateStreaming = async (resp, importObj) => {
@@ -572,7 +572,7 @@
     };
 
     console.log("[sfc] WASM hook installed.");
-
+  }
   //:(
 
 
@@ -1613,6 +1613,8 @@
     const popup = document.createElement("div");
     popup.id= "MOD_REPLAY_LISTPOPUP";
     popup.className = "popup_window popup_lg centered roundme_md";
+    popup.style.maxHeight= "95%";
+
     {//close button
       const popupClose = document.createElement("button");
       popupClose.className = "popup_close clickme roundme_sm";
