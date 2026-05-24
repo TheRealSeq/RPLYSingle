@@ -408,7 +408,6 @@
     }
   } //I love you puppy <3
 
-
   //:(
   {
     const log = console.log;
@@ -438,7 +437,7 @@
 
         const end = performance.now();
 
-        log(`[sfc] Loop patching for ${replacements.length} patches took ${end - start}ms`);
+        log(`[rply] Loop patching for ${replacements.length} patches took ${end - start}ms`);
 
         const wbg = importObj.wbg;
 
@@ -571,12 +570,9 @@
         return WebAssembly.instantiate(bytes, importObj);
     };
 
-    console.log("[sfc] WASM hook installed.");
+    console.log("[rply] WASM hook installed.");
   }
   //:(
-
-
-
 
   const replays = []; //all loaded replays
 
