@@ -411,7 +411,7 @@
 
   //:(
   {
-  const log = console.log;
+    const log = console.log;
 
     WebAssembly.instantiateStreaming = async (resp, importObj) => {
         const response = await resp;
@@ -1436,7 +1436,7 @@
       };
 
       reader.readAsArrayBuffer(file);
-  }
+    }
 
     static triggerFileUpload() {
       if(!this.bIsInit) this.initUploadElem();
@@ -1490,9 +1490,7 @@
       console.error("error in file parsing. " + e);
       console.error(e);
     }
-
-  }
-
+    }
   }
 
   document.addEventListener("keydown", function (event) {
