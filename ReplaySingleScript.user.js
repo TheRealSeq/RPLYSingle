@@ -1,0 +1,2023 @@
+// ==UserScript==
+// @name         SRPLYSingle
+// @namespace    sM
+// @license      GPL-3.0
+// @version      0.9.3
+// @author       Sq
+// @description  Replay shell games
+// @match        https://shellshock.io/*
+// @grant        unsafeWindow
+// @run-at       document-start
+// @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js
+// @updateURL    https://raw.githubusercontent.com/TheRealSeq/RPLYSingle/refs/heads/main/ReplaySingleScript.js
+// @downloadURL  https://raw.githubusercontent.com/TheRealSeq/RPLYSingle/refs/heads/main/ReplaySingleScript.js
+// ==/UserScript==
+
+(function () {
+  let functionNames = []; // fuck you puppy
+  let H = {}; //deobf names. Fuck you puppy.
+  let C = {}; //commcodes
+  let CN = {};//commcodes names
+  let ss = {}; // fuck you puppy
+  let deleteImage, downloadImage, piperImage, playImage, retargetImage; //GUI Stuff. Need to do here bc JS stupid. GRRRR. fuck you puppy
+  let timeProgressText;
+  let injectSuccess = 0, maxInjects = 0;
+  let isClientReady = false;
+  let mapEditJS = "UNKNOWN";
+  let realCC = {};
+  let realCCString = "TBF";
+  {
+    LM();
+    function LM() {
+      //so I can collapse this shit. Fuck you puppy!!!!!!1111
+      let originalReplace = String.prototype.replace;
+      let originalReplaceAll = String.prototype.replaceAll;
+
+      String.prototype.originalReplace = function () {
+        return originalReplace.apply(this, arguments);
+      };
+
+      String.prototype.originalReplaceAll = function () {
+        return originalReplaceAll.apply(this, arguments);
+      };
+//TODO REPLACE
+/*
+      const originalXHROpen = XMLHttpRequest.prototype.open;
+      const originalXHRGetResponse = Object.getOwnPropertyDescriptor(
+        XMLHttpRequest.prototype,
+        "response",
+      );
+      let shellshockjs;
+      XMLHttpRequest.prototype.open = function (...args) {
+        const url = args[1];
+        if (url && url.includes("js/shellshock.js")) {
+          shellshockjs = this;
+        }
+        originalXHROpen.apply(this, args);
+      };
+      Object.defineProperty(XMLHttpRequest.prototype, "response", {
+        get: function () {
+          if (this === shellshockjs) {
+            return inject(originalXHRGetResponse.get.call(this));
+          }
+          return originalXHRGetResponse.get.call(this);
+        },
+      });
+      */
+
+    let _oldAppendChild = HTMLElement.prototype.appendChild;
+    HTMLElement.prototype.appendChild = function(...args) {
+    if (args[0] && args[0].tagName &&  args[0].tagName.toLowerCase() == "script" && args[0].innerHTML.length > 2_000_000) {
+      args[0].innerHTML = inject(args[0].innerHTML);
+    };
+    return _oldAppendChild.apply(this, args);
+    }
+
+      //VAR STUFF
+      let F = [];
+
+      const getScrambled = function () {
+        return Array.from({ length: 10 }, () =>
+          String.fromCharCode(97 + Math.floor(Math.random() * 26)),
+        ).join("");
+      };
+      const createAnonFunction = function (name, func) {
+        const funcName = getScrambled();
+        unsafeWindow[funcName] = func;
+        F[name] = unsafeWindow[funcName];
+        functionNames[name] = funcName;
+      };
+      const fetchTextContent = function (url) {
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", url, false); // Make the request synchronous
+        xhr.send();
+        if (xhr.status === 200) {
+          return xhr.responseText;
+        } else {
+          console.error("Error fetching text content. Status:", xhr.status);
+          return null;
+        }
+      };
+
+      mapEditJS = fetchTextContent("https://shellshock.io/js/mapEdit.js");
+      console.log("found map edit js ");
+      console.log(mapEditJS);
+
+      //NOTE TO BWD: This method is NOT used in sfc development in any way.
+      //Patching this would literally only break this one legit mod.
+      function parseRealCC(){
+        let regex = /([a-zA-Z$_]+)_: 1(..)/g;
+        const matches = [...mapEditJS.matchAll(/([a-zA-Z$_]+)_: 1(..)/g)];
+        const ccObject = {};
+        matches.forEach((arr)=>{
+          ccObject[arr[1]] = Number(arr[2]);
+        });
+        return ccObject;
+      }
+      realCC = parseRealCC();
+      realCCString = JSON.stringify(realCC);
+
+      function getCommCode(name){
+        // addPlayer_: 121
+        const rexRegis = `${name}_: 1([0-9]+)`;
+        const ffasd =  mapEditJS.match(rexRegis);
+        console.log("map ed rex mat ");
+        console.log(ffasd);
+        if(ffasd){
+          const val = Number(ffasd[1]);
+          //const val = eval(ffasd[1]);
+          return val;
+        }
+      }
+      function grabCC(name){
+        C[name]=getCommCode(name);
+      }
+      C.addPlayer = getCommCode("addPlayer");
+      grabCC("syncMe");
+      grabCC("hitMe");
+      grabCC("socketReady");
+      grabCC("clientReady");
+      grabCC("gameJoined");
+
+      const inject = function (js) {
+        let clientKeys;
+        onlineClientKeys = fetchTextContent(
+          "https://raw.githubusercontent.com/StateFarmNetwork/client-keys/main/statefarm_latest.json",
+        ); //credit: me :D //shut up puppy
+        let onlineConstants = fetchTextContent(
+          "https://raw.githubusercontent.com/StateFarmNetwork/client-keys/main/constants_latest.json",
+        ); //credit: me :D //shut up puppy
+
+        if (onlineClientKeys == "value_undefined" || onlineClientKeys == null) {
+          let userInput = prompt(
+            "Valid keys could not be retrieved online. Enter keys if you have them.",
+            "",
+          );
+          if (userInput !== null && userInput !== "") {
+            alert(
+              "Aight, let's try this. If it is invalid, it will just crash.",
+            );
+            clientKeys = JSON.parse(userInput);
+          } else {
+            alert("You did not enter anything, this is gonna crash lmao.");
+          }
+        } else {
+          clientKeys = JSON.parse(onlineClientKeys);
+        }
+
+        let constants = JSON.parse(onlineConstants);
+        console.log(constants.vars.CommCode);
+        const formattedStr = constants.vars.CommCode.replace(
+          /(\w+):/g,
+          '"$1":',
+        );
+        //C = JSON.parse(formattedStr);
+
+        //FUCK YOU PUPPY
+        /*
+        var ig = JSON.parse(constants.vars.CommCodeStart);
+        Object.keys(C).forEach((k) => {
+          C[k] = ig++;
+        });
+
+        console.log(C);
+        */
+
+        H = clientKeys.vars;
+
+        let injectionString = "";
+
+        const modifyJS = function (find, replace) {
+            if(replace.includes("&")){
+                console.error(find);
+                console.error(replace);
+                //return;
+            }
+          let oldJS = js;
+          ++maxInjects;
+          js = js.originalReplace(find, replace);
+          if (oldJS !== js) {
+            console.log(
+              "%cReplacement successful! Injected code: " + replace,
+              "color: green; font-weight: bold; font-size: 0.6em; text-decoration: italic;",
+            );
+            ++injectSuccess;
+          } else {
+            console.log(
+              "%cReplacement failed! Attempted to replace " +
+                find +
+                " with: " +
+                replace,
+              "color: red; font-weight: bold; font-size: 0.6em; text-decoration: italic;",
+            );
+          }
+        };
+
+        injPreGrab(js, modifyJS);
+        //neeed to do here so changes are in the internal version too, unless I only modify that.......
+
+        //console.log(js.match(gameSocketVar+"\\.onmessage=(function\\(([a-zA-Z$_,]+)\\)\\{.+?(?=\\},"+ gameSocketVar + "))"));
+        const onMessageMatch = js.match(
+          H.ws +
+            //"\\.onmessage=(function\\(([a-zA-Z$_,]+)\\)\\{.+?(?=" +//"\\.shift();\\}\\})"
+            "\\.onmessage=(function\\(([a-zA-Z$_,]+)\\)\\{.+?),"+H.ws+"\\.onclose"
+            //"\\),"+H.ws +
+            //"))",
+        ); console.log(onMessageMatch);
+        const onMessageMatch2 = js.match(
+          H.ws +
+            "\\.onmessage=(function\\([a-zA-Z$_,]+\\)\\{).+?(?=," +
+            H.ws +
+            ")",
+        );
+
+        //FUCK YOU PUPPY
+        //I love you puppy
+
+        const sendGameOptionsVName = js.match(/function ([a-zA-Z$_,]+)\(\)\{[a-zA-Z$_,]+\.serialize\(\)\.send\(/)[1];
+        //;break;case nc.F:_D()}}
+        const matchIns = `case [a-zA-Z$_,]+\\.[a-zA-Z$_,]+:${sendGameOptionsVName}\\(\\)`;
+        const finalRegex = H.ws + `\\.onmessage=(function\\(([a-zA-Z$_,]+)\\)\\{switch.+?(?=${matchIns})${matchIns}\\}\\})`;
+        //const finalRegex = H.ws + `\\.onmessage=(function\\(([a-zA-Z$_,]+)\\)\\{switch.+?(?=\.shift\\(\\))\\}\\})`;
+        console.log(finalRegex);
+        const onMessage2Match = js.match(
+          finalRegex
+        );
+
+        if(onMessageMatch)console.log(onMessageMatch[1]);
+        if(onMessage2Match)console.log(onMessage2Match[1]);
+
+        let onMessage2Mod = onMessage2Match[1];
+
+        const unPack1Match = js.match(/\.data\),([a-zA-Z$_,]+\.unPackInt8U\(\))\)\{/)
+        onMessage2Mod = onMessage2Mod.replaceAll(unPack1Match[0] ,`.data),window.remapCC(${unPack1Match[1]})){`)
+
+        let onMessage1Mod = onMessageMatch[1].originalReplaceAll(
+          "syncMe",
+          "replacedValueSyncMe",
+        );
+        onMessage1Mod = onMessage1Mod.originalReplaceAll(
+          "hitMe",
+          "replacedValueHitMe",
+        );
+        onMessage1Mod = onMessage1Mod.originalReplaceAll(
+          "hitMeHardBoiled",
+          "nononono",
+        );
+        //T!!!!!!!!!!!!!!!!!!!!!!!!
+        const unPack2Match = js.match(/=([a-zA-Z$_,]+\.unPackInt8U\(\));switch\(/);
+        //inj(unPack2Match[0] ,`=window.remapCC(${unPack2Match[1]});console.log("nigger2");switch(`)
+        onMessage1Mod = onMessage1Mod.originalReplaceAll(
+          unPack2Match[0],
+          `=window.remapCC(${unPack2Match[1]});switch(`,
+        );
+
+        //do map array
+        const mapRegex = /var ([a-zA-Z$_,]+)=\[\{filename:/;
+        const mapMatch = js.match(mapRegex);
+        console.log("mapmatch");
+        console.log(mapMatch);
+        H.MAPS = mapMatch[1];
+
+        //find removePlayer commCode
+        //function uw(e){var t=qb[e];e!=EO?t&&(t.dn.remove()
+        H.removePlayerFunc = js.match(/function ([a-zA-Z$_,]+)\([a-zA-Z$_,]+\)\{var [a-zA-Z$_,]+=[a-zA-Z$_,]+\[[a-zA-Z$_,]+\];[a-zA-Z$_,]+!=[a-zA-Z$_,]+\?[a-zA-Z$_,]+&&\([a-zA-Z$_,]+\.[a-zA-Z$_,]+\.remove\(\)/);
+        console.log(H.removePlayerFunc);
+        H.removePlayerFunc = H.removePlayerFunc[1];
+        //C is commcode names
+        //case nc.N:uw(
+        CN.removePlayer = js.match(`case [a-zA-Z$_,]+\\.([a-zA-Z$_,]+):${H.removePlayerFunc}\\(`);
+        console.log(CN.removePlayer);
+        CN.removePlayer = CN.removePlayer[1];
+
+        //remove from play func
+        //const removePlayerMatch = js.match(/\.removePlayer:([a-zA-Z$_,]+)/);
+        const removePlayerMatch = js.match(`\\.${CN.removePlayer}:([a-zA-Z$_,]+)`);
+        console.log("rem from play matzch: ");
+        console.log(removePlayerMatch);
+        H.removePlayer = removePlayerMatch[1];
+
+
+        //find addPlayer commcode
+        //.forEach((t=>e.At[t]=0)),fw(e),
+        H.addPlayerFunc = js.match(/\.forEach\(\([a-zA-Z$_,]+=>[a-zA-Z$_,]+\.[a-zA-Z$_,]+\[t\]=0\)\),([a-zA-Z$_,]+)\([a-zA-Z$_,]+\),/); //this matches the playOffline addplayer call.
+        console.log(H.addPlayerFunc)
+        H.addPlayerFunc = H.addPlayerFunc[1];
+        CN.addPlayer = js.match(/\.send\([a-zA-Z$_,]+\);break;case [a-zA-Z$_,]+\.([a-zA-Z$_,]+):var [a-zA-Z$_,]+=[a-zA-Z$_,]+\.unPackInt8U\(\)/);
+        console.log(CN.addPlayer);
+        CN.addPlayer = CN.addPlayer[1];
+
+        //onMessage1Mod = onMessage1Mod.originalReplace()
+        console.log("meid: " + H.meid);
+        onMessage1Mod = onMessage1Mod.originalReplaceAll(H.meid, "-1");
+        const newRegeg = `${CN.addPlayer}:var ([a-zA-Z$_,]+)=`
+        H.addPlayerID = js.match(newRegeg)[1];
+        const endOfAddPlayerUnpackingMatch = js.match(
+          /\.gameType=[a-zA-Z$_,]+\.unPackInt8U\(\),/,
+        );
+        console.log(endOfAddPlayerUnpackingMatch);
+        //onMessage1Mod = onMessage1Mod.originalReplace(endOfAddPlayerUnpackingMatch[0], endOfAddPlayerUnpackingMatch[0] +"(("+H.meid+ "=="+H.addPlayerID+ ")?(console.log('me'),continue):console.log('notME')),")
+        //onMessage1Mod = onMessage1Mod.originalReplace(endOfAddPlayerUnpackingMatch[0], endOfAddPlayerUnpackingMatch[0] +"console.log('fuck you')){}if("+H.meid+ "=="+H.addPlayerID+ "){console.log('me');continue;}if(");
+
+        //onMessage1Mod = onMessage1Mod.originalReplace(onMessageMatch2[1], onMessageMatch2[1]+H.meid+"=-1;");//logCommCodeExternal
+        // onMessage1Mod = onMessage1Mod.originalReplace("var t=Iy.unPackInt8U();", "var t=Iy.unPackInt8U();window." + functionNames.logCommCodeExternal + "(t);"); //fuck dynamic!!!
+        //modifyJS("cmd=Iy.unPackInt8U(),", "cmd=Iy.unPackInt8U(),window." + functionNames.logCommCodeExternal + "(cmd),");
+
+        const respawnValidityCheckMatch = js.match(
+          /(\.unPackInt8U\(\);\()([a-zA-Z$_,]+=[a-zA-Z$_,]+\[([a-zA-Z$_,]+)\])(\)&&\([a-zA-Z$_,]+\.[a-zA-Z$_,]+\.removeFromPlay)/,
+        );
+        console.log(respawnValidityCheckMatch);
+        //onMessage1Mod= onMessage1Mod.originalReplaceAll(respawnValidityCheckMatch[2], "("+respawnValidityCheckMatch[2]+"&&"+respawnValidityCheckMatch[3]+"!="+H.meid+")");
+        //onMessage1Mod
+
+        console.log(onMessage1Mod);
+
+        //onMessage1Mod= onMessageMatch[1]
+
+         // onMessage1Mod+="};true";
+
+        H.onMessage2 = onMessage2Match[1];
+        //H.onMessage = onMessage1Mod;
+
+        //this was causing issues
+        delete H.BabylonVersion;
+
+        const variableNameRegex = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
+        for (let name in H) {
+          const deobf = H[name];
+          if (
+            variableNameRegex.test(deobf) ||
+            name === "onMessage" ||
+            name === "onMessage2"
+          ) {
+            injectionString = `${injectionString}${name}: (() => { try { return ${deobf}; } catch (error) { return "value_undefined"; } })(),`;
+          } else {
+            console.log(name + ": "+deobf);
+            console.log(variableNameRegex.test(deobf));
+            const crashplease = "balls";
+            crashplease = "balls2";
+          }
+        }
+        console.log(injectionString);
+          unsafeWindow.setOM1 = (func)=>{
+              ss.onMessage = func;
+          }
+        //oh...
+        modifyJS(
+          H.SCENE + ".render",
+          `window["${functionNames.retrieveFunctions}"]({${injectionString}},true)||window.setOM1(${onMessage1Mod})||${H.SCENE}.render`,
+        );
+
+        //this one might be risky...
+        //RISKY IT WAS! TODO: FIX
+        //const beforeNotPlayingInIFramMatch = js.match(/subtree:!0\}\);var [a-zA-Z$_,]+=\(\)=>\{/)
+        const beforeNotPlayingInIFramMatch = js.match(/console\.log\("loadResources\(\)"\),[a-zA-Z$_,]+\([a-zA-Z$_,]+\),function\([a-zA-Z$_,]+,[a-zA-Z$_,]+\)\{/); //heh no iframe anymore. eh still gonna keep title bc doesnt matter fuck you
+        modifyJS(beforeNotPlayingInIFramMatch[0], beforeNotPlayingInIFramMatch[0] + `window["${functionNames.retrieveFunctions}"]({${injectionString}},true);`);
+        // console.log(js);
+          console.error(injectionString);
+
+        injExternal(js, modifyJS); //fuck you puppy
+
+        console.log(`--SRPLY SUMMARY--\n${injectSuccess}/${maxInjects} injections (${maxInjects-injectSuccess} failures)`);
+        //showMessageDialog("--SRPLY SUMMARY--", `${injectSuccess}/${Injects} injections (${Injects-injectSuccess} failures)`);
+
+        console.log(H); //why here? Fuck you puppy
+        return js;
+      };
+      didBootSetup = false;
+      createAnonFunction("retrieveFunctions", function (vars) {
+        ss = vars;
+        if(!didBootSetup){
+          didBootSetup = true;
+          Object.defineProperty(extern, 'observingGame', {
+            get: function() {
+              return bReplaying;
+            }
+          });
+          createGUI();
+        }
+      });
+      createFuncsExternal(createAnonFunction);
+    }
+  } //I love you puppy <3
+
+
+  //:(
+
+  const log = console.log;
+
+    WebAssembly.instantiateStreaming = async (resp, importObj) => {
+        const response = await resp;
+        const buffer = await response.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+
+        const replacements = [
+            {
+                // pattern: loop + void type + br + depth 0 + end
+                pattern:     [0x03, 0x40, 0x0C, 0x00, 0x0B],
+                replacement: [0x01, 0x01, 0x01, 0x01, 0x01] // five nops
+            },
+            {
+                pattern:     [0x41, 0x20, 0x41, 0x01, 0x10, 0xA7], // 0x01 = i32.const 1
+                replacement: [0x41, 0x20, 0x41, 0x4B, 0x10, 0xA7]
+            }
+        ];
+
+        const start = performance.now();
+
+        const formatBytes = (bytes, base = 10) => ([ ...bytes]).map(b => b.toString(base).padStart(base === 16 ? 2 : 3, '0')).join(' ');
+
+        let index = 0;
+
+        const end = performance.now();
+
+        log(`[sfc] Loop patching for ${replacements.length} patches took ${end - start}ms`);
+
+        const wbg = importObj.wbg;
+
+                let blockedCalls = ["sethref", "setInterval"];
+        let exceptions = ["SELF", "WINDOW", "GLOBAL_THIS", "GLOBAL", "is_undefined", "init_", "document", "createElement", "settextContent", "body", "instanceof_Window", "instanceof_HtmlCanvasElement", "nodeType", "_item_", "_textContent_", "_now_", "_closure_", "_string_", "_number_", "movementX", "movementY", "_new_", "addEventListener", "instanceof_HtmlElement", "_get_", "_set_", "_cast_", "_wbindgenis", "_wbindgennumberget"];
+
+        // https://stackoverflow.com/questions/2712136/how-do-i-make-this-loop-all-children-recursively
+
+        function wipeNode(node, classNameToRemove) {
+            const clonedNode = node.cloneNode(true);
+
+            function removeElements(currentNode) {
+                if (!currentNode || !currentNode.children) {
+                    return;
+                };
+                const children = Array.from(currentNode.children);
+
+                for (let i = 0; i < children.length; i++) {
+                    const child = children[i];
+                    const classList = Array.from(child.classList);
+                    if (classList.includes('tp-statefarm')
+                        || classList.includes('tp-dvfw')
+                        || classList.includes("MiniMap")
+                        || classList.includes("playerDot")
+                        || classList.some(c => c.startsWith("tp-"))) {
+                        currentNode.removeChild(child);
+                    } else {
+                        removeElements(child);
+                    };
+                };
+            };
+            removeElements(clonedNode);
+
+            return clonedNode;
+        };
+
+
+        function checkForStateFarmChildren(node) {
+            if (node.querySelectorAll) {
+                return node.querySelectorAll("[class^=\"tp-\"], .MiniMap, .playerDot").length > 0;
+            };
+            return true;
+        };
+
+        class FakeNodeList extends Array {
+            item(index) {
+                return this[index];
+            };
+        };
+
+        let rewrites = { // nice try but you only publicly get to see the prod rewrites
+           'querySelector': function (item, wasm_str_offset, len) {
+                if (len == 1) { // '*'
+                    log("Hooked querySelector", item, wasm_str_offset, len);
+                    let items = document.querySelectorAll("*:not(.tp-statefarm):not(.tp-statefarm *):not(.tp-statefarm > *):not(.tp-statefarm > * *)");
+                    log("Hooked length:", items.length);
+                    return items;
+                };
+           },
+           'childNodes': function (item) {
+                // log("Hooked childNodes, arg:", item);
+                let nodes = item.childNodes;
+                let spoofedNodes = new FakeNodeList();
+                for (let child of nodes) {
+                    if (checkForStateFarmChildren(child)) { // holy speedup
+                        let fakeNode = wipeNode(child.cloneNode(true));
+                        spoofedNodes.push(fakeNode);
+                    } else {
+                        spoofedNodes.push(child.cloneNode(true));
+                    };
+                };
+                return spoofedNodes;
+            },
+            '_length_': function (item) {
+                if (item instanceof FakeNodeList) {
+                    return item.length;
+                } else {
+                    log("Hooked length, arg:", item);
+                    return item.length;
+                };
+            },
+            'appendChild': function (parent, child) {
+                console.warn("Attempted to append", child, "to", parent);
+                parent.appendChild(child);
+            },
+            // 'addEventListener': function(item, stringStart, stringLen, listener) {
+            //     log("Hooked addEventListener", item, stringStart, stringLen, listener);
+            //     item.addEventListener('pointermove', (...args) => {
+            //         // log("Called pointermove listener with args:", args);
+            //         listener(...args);
+            //     });
+            // },
+            'innerText': () => {},
+            '_has_': () => true,
+            'isTrusted': () => true,
+        };
+
+        for (const key in wbg) {
+            if (blockedCalls.some(call => key.includes(call))) {
+                log(`${key}: Patching blank`);
+                wbg[key] = function (...args) {
+                    console.warn(`Blocked call to ${key}`, args);
+                };
+            };
+            // log(`wbg.${key}:`, wbg[key].toString());
+            if (exceptions.some(exception => key.includes(exception))) {
+                log(`${key}: Skipping patch (raw: ${wbg[key].toString()})`);
+                continue;
+            } else if (Object.keys(rewrites).some(rew => key.includes(rew))) {
+                log(`${key}: Custom patch`);
+                wbg[key] = rewrites[Object.keys(rewrites).find(rew => key.includes(rew))];
+            } else {
+                log(`${key}: Default patch (print args)`)
+                wbg[key] = function () {
+                    log("Called", key);
+                    log("Args", arguments);
+                    console.warn(`Called unpatched ${key}! Something probably broke. Args:`, arguments, "\nAllowing passthrough!");
+                    return wbg[key].apply(this, arguments);
+                };
+            };
+        };
+
+       // ss.WASMOBJECT = { response, importObj };
+        unsafeWindow.WASMOBJECT = { response, importObj };
+
+        // debugger;
+        //log(`importObj wbg hooks:`, importObj.wbg);
+
+        // instantiate patched WASM
+        return WebAssembly.instantiate(bytes, importObj);
+    };
+
+    console.log("[sfc] WASM hook installed.");
+
+  //:(
+
+
+
+
+  const replays = []; //all loaded replays
+
+  function createFuncsExternal(cf) {
+    //cf is the createAnonFunction method. Fuck you puppy
+    cf("recordPacket", function (d, t) {
+      //packets.push(crP);
+      //PacketStreamer.addPacket(crP);
+      //rePlaytemp.recordPacket(d, t);
+      ReCorder.handlePacketInput(d, t);
+      return;
+    });
+    cf("logCommCodeExternal", function (cc) {
+      console.log("c");
+      console.log(cc);
+      console.log(C[cc]);
+    });
+    cf("endReplay", function(){
+      bReplaying = false;
+      setReplayUIVis(false);
+    });
+  }
+
+  function injPreGrab(js, inj) {
+    //block myplayer respawn
+    const beforeMeCheckRespawnMatch = js.match(
+      /(\.respawn\([a-zA-Z$_,]+,[a-zA-Z$_,]+,[a-zA-Z$_,]+\),)([a-zA-Z$_,]+==([a-zA-Z$_,]+))\?\(/,
+    );
+    H.meid = beforeMeCheckRespawnMatch[3];
+    console.log(beforeMeCheckRespawnMatch);
+    inj(
+      beforeMeCheckRespawnMatch[0],
+      beforeMeCheckRespawnMatch[1] +
+        "(" +
+        beforeMeCheckRespawnMatch[2] +
+        "&&!window.bReplaying)?(console.log('fuck you hah '+window.bReplaying),",
+    );
+
+    const aidsMatch = js.match(
+      /([a-zA-Z$_,]+)=([a-zA-Z$_,]+)\.playType===vueApp\.playTypes\.createPrivate\?"createPrivate".+?(?=,)/,
+    );
+    console.log(aidsMatch);
+    inj(aidsMatch[0], "console.log('google anal')");
+  }
+
+  function injExternal(js, inj) {
+
+
+
+    const onMessage1Match = js.match(
+      H.ws + "\\.onmessage=function\\(([a-zA-Z$_,]+)\\)\\{",
+    );
+    const onMessage2Match = js.match(
+      "(" + H.ws + "\\.onmessage=function\\(([a-zA-Z$_,]+)\\)\\{)switch",
+    );
+
+    inj(
+      onMessage1Match[0],
+      onMessage1Match[0] +
+        "window." +
+        functionNames.recordPacket +
+        "(" +
+        onMessage1Match[1] +
+        ", 1);",
+    );
+    inj(
+      onMessage2Match[1],
+      onMessage2Match[1] +
+        "window." +
+        functionNames.recordPacket +
+        "(" +
+        onMessage2Match[2] +
+        ", 2);",
+    );
+
+    inj("e=window}", "let e2=window}");
+
+
+
+    const sendMatch = js.match(
+      /(new Uint8Array\(this\.arrayBuffer,0,this\.idx\);)([a-zA-Z$_,]+)/,
+    );
+    console.log(sendMatch);
+    inj(sendMatch[1], sendMatch[1] + "if(" + sendMatch[2] + ")");
+
+    //not trap the player in the replay
+    const leaveMatch = js.match(H.ws + "\\.close\\([a-zA-Z$_,]+\\.mainMenu\\)");
+    console.log(leaveMatch);
+    inj(
+      leaveMatch[0],
+      H.ws +
+        "?" +
+        leaveMatch[0] +
+        `:window["${functionNames.endReplay}"]()`,
+    );
+
+    //make respawn not set view to myplayer if in replay
+    const setViewToMeIDAfterMePlayerRespawnMatch = js.match(
+      "(this\\.id==" + H.meid + ")(&&\\([a-zA-Z$_,]+=" + H.meid + "\\))",
+    );
+    console.log(setViewToMeIDAfterMePlayerRespawnMatch);
+    //inj(setViewToMeIDAfterMePlayerRespawnMatch[0], "("+setViewToMeIDAfterMePlayerRespawnMatch[1]+ "&&!window.bReplaying)" + setViewToMeIDAfterMePlayerRespawnMatch[2]);
+
+    //update_
+    const playerUpdate_Match = js.match(H._playerThing + ".prototype.move");
+
+    //temp
+    //, console.log('me'+"+H.meid+"),console.log(kb.id)
+    //inj("if(Nb===AL.firstPerson)kb", "if(false)kb");
+    //inj("iO.PS=WN.position.x,iO.oS=WN.position.y,iO.mS=WN.position.z,", "");
+
+    //inj(";Tb&&rb.update(t)", ";(Tb||window.bReplaying)&&rb.update(t)");
+    //inj("EL.prototype.update=function(e){", "EL.prototype.update=function(e){console.log('cam loc: ' + WN.position);");
+    //inj("iO&&(Cb.update(t)", "(iO&&!window.bReplaying)&&(Cb.update(t)");
+    const meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTFMatch =
+      js.match(/\)\}([a-zA-Z$_,]+)&&\([a-zA-Z$_,]+\.update\([a-zA-Z$_,]+\)/);
+    //console.log("BULLSHIT DUMBASS : "+meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTFMatch);
+    H.me =
+      meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTFMatch[1];
+    inj(
+      meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTFMatch[0],
+      meCheckInTheUpdateActorsFunctionBullshitDumbassWhyDoesThisEditTheCameraPositionWTFMatch[0].originalReplace(
+        H.me,
+        "(" + H.me + "&&!window.bReplaying)",
+      ),
+    );
+
+    //inj("iO.PS=WN.position.x,iO.oS=WN.position.y,iO.mS=WN.position.z,", "");
+
+    console.log(H.camera);
+    const regexFix2025GR = `${H.me}.${H.x}=${H.CAMERA}.position.x,${H.me}.${H.y}=${H.CAMERA}.position.y,${H.me}.${H.z}=${H.CAMERA}.position.z,`.replaceAll("$", "\\$");
+    console.log(regexFix2025GR);
+    const makePlayerPositionEqualCameraPositionForSomeFUCKINGReasonMatch =
+      js.match(regexFix2025GR);
+    console.error("MEGA");
+    console.error(makePlayerPositionEqualCameraPositionForSomeFUCKINGReasonMatch);
+    /*
+      js.match("\\("+
+        H.me +"\\." +H.x +
+          "=" +
+          H.CAMERA +
+          "\\.position\\.x\\),\\(" +
+          H.me +
+          "\\." +
+          H.y +
+          "=" +
+          H.CAMERA +
+          "\\.position\\.y\\),\\(" +
+          H.me +
+          "\\." +
+          H.z +
+          "=" +
+          H.CAMERA +
+          "\\.position\\.z\\),",
+      );*/
+    inj(
+      makePlayerPositionEqualCameraPositionForSomeFUCKINGReasonMatch[0],
+      "!window.bReplaying?(" +
+        makePlayerPositionEqualCameraPositionForSomeFUCKINGReasonMatch[0] +
+        "1==1):1==1,",
+    );
+
+    const respawnTimerBypassMatch = js.match(/(vueApp\.game\.respawnTime=Math\.min\([a-zA-Z$_,]+,[a-zA-Z$_,]+\),)([a-zA-Z$_,]+<=0&&[a-zA-Z$_,]+)/);
+    //inj(respawnTimerBypassMatch[0], respawnTimerBypassMatch[1] + "window.bReplaying||("+ respawnTimerBypassMatch[2] + ")");
+
+    //inj("enterSpectatorMode:function(){", "enterSpectatorMode:function(){window.bReplaying||");
+
+    H.actorClass = js.match(/,([a-zA-Z$_,]+)\.prototype\.updateTeam=fun/)[1];
+    console.log(H.actorClass);
+    const actorUpdateCodeMatch = js.match("\\"+H.actorClass+"\\.prototype\\.update=function\\(e\\)\\{");
+    console.log(actorUpdateCodeMatch);
+    inj(actorUpdateCodeMatch[0], actorUpdateCodeMatch[0] + "if(window.bReplaying && window.replayer.bIsPaused)return;");
+
+    //const updateGameUIForWhenMeIsValidMatch = js.match(/(\)\}[a-zA-Z$_,]+)(&&\([a-zA-Z$_,]+\.update\([a-zA-Z$_,]+\),[a-zA-Z$_,]+\.update)/);
+    //inj(updateGameUIForWhenMeIsValidMatch[0], updateGameUIForWhenMeIsValidMatch[1] +"&&!window.bReplaying"+updateGameUIForWhenMeIsValidMatch[2]);
+    //inj('document.getElementById("reticleContainer").className=""', 'document.getElementById("reticleContainer").className=true?"hideme":""');
+
+    //make various UI elements invisible during replay
+    const hm1Match = js.match(/(\.hideDot\(\),)([a-zA-Z$_,]+\.hitMarkers)/);
+    const hm2Match = js.match(/(=new [a-zA-Z$_,]+\([a-zA-Z$_,]+\),)([a-zA-Z$_,]+\.hitMarkers)/);
+    inj(hm1Match[0], hm1Match[1] + "(!window.bReplaying&&" +hm1Match[2] + ")");
+    inj(hm2Match[0], hm2Match[1] + "(!window.bReplaying&&" +hm2Match[2] + ")");
+
+    inj('.prototype.show=function(){if(document.getElementById("reticleContainer")', '.prototype.show=function(){if(window.bReplaying)return;if(document.getElementById("reticleContainer")');
+
+    inj(".prototype.showDot=function(){", ".prototype.showDot=function(){if(window.bReplaying)return;");
+
+    //myplayer update.
+    const setControlkeysToMeMatch= js.match("(\\|\\|this\\.id!=" + H.meid + ")(\\|\\|)");
+    //inj(setControlkeysToMeMatch[0], setControlkeysToMeMatch[1] + "||window.bReplaying" + setControlkeysToMeMatch[2]);
+
+    const cckmatch = js.match("this\\.([a-zA-Z$_,]+)="+H.CONTROLKEYS);
+    H.controlkeysPlayerVar = cckmatch[1];
+
+    inj(cckmatch[0], "true");
+
+      console.error(H._playerThing);
+            console.error(H._update);
+
+    const playerUpdateMatch = js.match(H._playerThing + "\\.prototype\\."+H._update.replaceAll("$", "\\$")+"=function\\([a-zA-Z$_,]+\\)\\{");
+    inj(playerUpdateMatch[0], playerUpdateMatch[0]+"if(this.id==" + H.meid+")window.replayMe = this; if(this.id==" + H.meid+"&&!window.bReplaying){this." + H.controlkeysPlayerVar + "=" + H.CONTROLKEYS+";/*window.recordMyplayer(this);*/}");
+
+    const loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch = js.match(/(function\((e),t\)\{)(if\(console\.log\("loadMap\(\)"\))/);
+    console.log(loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch);
+    inj(loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch[0],
+      `${loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch[1]}if(window.bReplaying && window.rePlayMapIdxOverride >= 0)
+      ${loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch[2]}=window.rePlayMapIdxOverride;${loadMapOverrideMapIdxIfReplayingAndMapIdxNeedsToBeOverwrittenMatch[3]}`
+    );
+
+    const setMeRotationToSpectatorRotationBecauseWhyFUCKINGNotHuhMatch = js.match(/\.prototype\.freeCamera=function\(\)\{/);
+    console.log(setMeRotationToSpectatorRotationBecauseWhyFUCKINGNotHuhMatch);
+    inj(setMeRotationToSpectatorRotationBecauseWhyFUCKINGNotHuhMatch[0], setMeRotationToSpectatorRotationBecauseWhyFUCKINGNotHuhMatch[0]+"!window.bReplaying&&");
+
+    console.log(H);
+
+    const setSpectatorRotationToMeRotationTooForSomeFUCKINGSHITReasonWHYWouldYouDoThatMatch = js.match(`${H.CAMERA}\\.rotation.x=-${H.me}\\.${H.pitch},${H.CAMERA}\\.rotation.y=${H.me}\\.${H.yaw}`);
+    console.log(setSpectatorRotationToMeRotationTooForSomeFUCKINGSHITReasonWHYWouldYouDoThatMatch);
+    const test25 = setSpectatorRotationToMeRotationTooForSomeFUCKINGSHITReasonWHYWouldYouDoThatMatch[0].replaceAll(H.me, "window.rotationGrabs");
+    //inj(setSpectatorRotationToMeRotationTooForSomeFUCKINGSHITReasonWHYWouldYouDoThatMatch[0], "!window.bReplaying&&("+setSpectatorRotationToMeRotationTooForSomeFUCKINGSHITReasonWHYWouldYouDoThatMatch[0]+")");
+    inj(setSpectatorRotationToMeRotationTooForSomeFUCKINGSHITReasonWHYWouldYouDoThatMatch[0], test25);
+
+
+
+    //,fO.SN=Math.radAdd(fO.SN,-i*t),fO.FN=Math.clamp(fO.FN+n*CM.mouseInvert*-t,-1.5,1.5)
+    /* BROKEN 2025 -- hopefully fixed now....
+    const setRotationsInputHandelerMatch = js.match(`${H.me}\\.${H.yaw}=Math\\.radAdd.+?(?=Math)Math\\.clamp.+?(?=})`);
+    console.log(setRotationsInputHandelerMatch);
+    const s2f = setRotationsInputHandelerMatch[0].replaceAll(H.me, "window.rotationGrabs");
+    inj(setRotationsInputHandelerMatch[0],
+      `${s2f},!window.bReplaying&&(${setRotationsInputHandelerMatch[0]})`
+    );*/
+
+    unsafeWindow.onSpecUpdate=function(camera){
+      console.log("spec update");
+    }
+
+
+    unsafeWindow.rotationGrabs = {};
+    unsafeWindow.rotationGrabs[H.pitch] = 0;
+    unsafeWindow.rotationGrabs[H.yaw] = 0;
+
+    document.getElementById("canvas").addEventListener("mousemove", (e)=>{
+      //console.log(localStore.getItem("mouseSpeed"))
+      var mult = Math.pow(localStore.getItem("mouseSpeed") * 1e-3, 2);
+      let mx = event.movementX;
+      let my = event.movementY;
+      unsafeWindow.rotationGrabs[H.pitch] = Math.clamp(unsafeWindow.rotationGrabs[H.pitch] + -my * localStore.getItem("mouseInvert") * mult, -1.5, 1.5);
+      unsafeWindow.rotationGrabs[H.yaw] =Math.radAdd(unsafeWindow.rotationGrabs[H.yaw], -mx * mult);
+    });
+
+    //;else{var t=0,i=0,n=0;Pb&gx.left
+    const setDeltaVectorToDirOfPlayerMatch = js.match(/;else\{var [a-zA-Z$_,]+=0,[a-zA-Z$_,]+=0,[a-zA-Z$_,]+=0;[a-zA-Z$_,]+&[a-zA-Z$_,]+\.left.+?(?=var)/);
+    console.log(setDeltaVectorToDirOfPlayerMatch);
+    const s3f = setDeltaVectorToDirOfPlayerMatch[0].replaceAll(H.me, "window.rotationGrabs");
+    inj(setDeltaVectorToDirOfPlayerMatch[0], s3f);
+
+    //oops this doesnt change anything
+    //this.playerIdx!==_O
+    //const doNotGoSpectateMyPlayerMatch = js.match(/this\.playerIdx!==[a-zA-Z$_,]+/);
+    //console.log(doNotGoSpectateMyPlayerMatch);
+    //inj(doNotGoSpectateMyPlayerMatch[0], `(window.bReplaying||${doNotGoSpectateMyPlayerMatch[0]})`);
+
+    H.playing = js.match(/\.([a-zA-Z$_,]+)&&\([a-zA-Z$_,]+\.[a-zA-Z$_,]+\.handsToWeaponSkeleton\(\)/)[1];
+
+    //.playing && player.id !== meId
+    if(false || true){
+    const doNotSelectMyPlayerForFindNextPlayerInTheSpectatorClass = js.match(`(\.${H.playing}&&)([a-zA-Z$_,]+\.id!==${H.meid})`);
+    console.log(doNotSelectMyPlayerForFindNextPlayerInTheSpectatorClass);
+    const injectione = `${doNotSelectMyPlayerForFindNextPlayerInTheSpectatorClass[1]}(window.bReplaying||${doNotSelectMyPlayerForFindNextPlayerInTheSpectatorClass[2]})`;
+    inj(doNotSelectMyPlayerForFindNextPlayerInTheSpectatorClass[0], injectione);
+    }
+
+
+    const renderMatch = js.match(/..\.render\(\),..\.render\(\)/);
+    console.log("render match: ");
+    console.log(renderMatch);
+    inj(renderMatch[0], renderMatch[0]+",window.replayMe&&!window.bReplaying&&window.recordMyplayer(window.replayMe)");
+
+
+    //fancy stuff that might come in handy later...
+    H.ccVar = js.match(/var (..)=\{.:100,.:101,/)[1];
+    console.log(H.ccVar);
+    inj("window.onloadingcomplete=async function(){", `window.onloadingcomplete=async function(){window.grabCC=()=>{return ${H.ccVar};};window.setCC=(cc)=>{${H.ccVar}=cc};`);
+
+    unsafeWindow.remapCC = (oldCC)=>{
+      //console.log("remapCC");
+      if(bReplaying && RePlayer && RePlayer.activeReplay.realCC){
+        const name = getKeyByValue(RePlayer.activeReplay.realCC, oldCC);
+        //console.log("remapped " + oldCC +" to " + realCC[name]);
+        return realCC[name];
+      }
+      return oldCC;
+    }
+
+    //IST if they change that length I will kill all of you
+    //inject ws1 onmsg
+    //MOVED TO onmessage mods!!!!! THEY ARE ACTIVE ON REPLAYS, NOT THIS!!!
+    /*
+    const unPack1Match = js.match(/\.data\),([a-zA-Z$_,]+\.unPackInt8U\(\))\)\{/)
+    console.error(unPack1Match);
+    inj(unPack1Match[0] ,`.data),window.remapCC(${unPack1Match[1]})){`)*/
+    //inj(/switch(...init\(\),..\.unPackInt8U/)
+    //ws2 onmsg
+    /*
+    const unPack2Match = js.match(/=([a-zA-Z$_,]+\.unPackInt8U\(\));switch\(/);
+        console.error(unPack2Match);
+    inj(unPack2Match[0] ,`=window.remapCC(${unPack2Match[1]});console.log("nigger2");switch(`)*/
+    //inj("Tc.unPackInt8U();", "Tc.unPackInt8U();console.log(\"nigger\");")
+  }
+  //doing this here because where else?
+  unsafeWindow.recordMyplayer = function(player){
+    const buffer = new ArrayBuffer(9);
+    const v = new DataView(buffer);
+    let offs = 0;
+    v.setUint8(offs, ss.CONTROLKEYS); //... //reminder to kms @ June 7th 2025
+    offs += 1;
+    v.setFloat32(offs, player[H.yaw]);
+    offs+=4;
+    v.setFloat32(offs, player[H.pitch]);
+    offs+=4;
+    ReCorder.handlePacketInput({data: buffer}, 3);
+  }
+
+  function playBackMyPlayerPacket(arr){
+    //console.log("PBMP: ");
+    //console.log(arr);
+    if(unsafeWindow.replayMe){
+      const v = new DataView(arr.buffer);
+      unsafeWindow.replayMe[H.controlkeysPlayerVar] = v.getUint8(0);
+
+      let offs = 0;
+      offs += 1;
+      unsafeWindow.replayMe[H.yaw] = v.getFloat32(offs);
+      offs+=4;
+      unsafeWindow.replayMe[H.pitch] = v.getFloat32(offs);
+      offs+=4;
+    }
+  }
+
+  function findMapIdx(fileName) {
+    for(let i = 0; i<ss.MAPS.length; ++i){
+      if(ss.MAPS[i].filename == fileName) return i;
+    }
+    return -1;
+  }
+
+  class ReCorder{
+
+    static handlePacketInput(d, t){
+      /*
+      Object.keys(ss.SERVERCODES).forEach((key)=>{
+        if(ss.SERVERCODES[key] == Packet3.peekByteStatic(d)){
+          console.log("cc " + key);
+        }
+      });
+      */
+      if(Packet3.peekByteStatic(d) ===C.socketReady &&t<3){
+        console.log("SRPLY: detected socketReady commcode, automatically creating new replay!");
+        this.releaseReplay();
+        this.currentReplay = new RePlay();
+        //not gonna return bc socketReady is filtered in playback anyway, also maybe for later stuff it might be interesting to keep it..
+      }
+      this.currentReplay.recordPacket(d, t);
+    }
+
+    static releaseReplay(){
+      if(this.currentReplay) replays.push(this.currentReplay);
+    }
+  }
+
+  //class declarations
+  class Packet3 {
+    //data; //FUCK YOU PUPPY
+    //time4; //FUCK YOU PUPPY 2
+    //type; //FUCK YOU PUPPY 3
+
+    constructor(data, time, type) {
+      //time is relative time passed somce rec start
+      //this.data = data; //(Uint8Array of the ws' input) JETZT: volles Websocketonmessageantwortobjekt, somit liegt die originale data in data.data (dann halt mit new Uint8Array aber jetzt nd)
+      this.time = time; //time since record start in millis
+      this.type = type; //what func was it recorded form? (1 for onMessage1, 2 for onMessage2, 3 for myplayer)
+      this.data = {
+        data: data.data, //heh
+      };
+    }
+
+    peekByte() {
+      return new Uint8Array(this.data.data)[0];
+    }
+
+    static peekByteStatic(dat){
+      return new Uint8Array(dat.data)[0];
+    }
+
+    getDataAsByteArray() {
+      return new Uint8Array(this.data.data);
+    }
+  }
+
+  class RePlay {
+    constructor() {
+      this.streamer = new PacketStreamer();
+      this.recordStartTime = Date.now();
+      this.saveVersion = FileManager.SAVE_VERSION;
+      this.lastPacketCache = null;
+      this.map = "UNKNOWNMAP";
+      this.mapIdx = -1;
+      this.realCC = realCC;
+    }
+
+    recordPacket(data, type) {
+      const pack =  new Packet3(data, Date.now() - this.recordStartTime, type);
+      this.streamer.addPacket(
+        pack,
+      );
+      //record map
+      if(pack.peekByte() == /*ss.SERVERCODES.gameJoined*/C.gameJoined){
+        const d = pack.getDataAsByteArray();
+        let idx = 1+1+1+1; //commcode + meId +myTeam +gameType
+        let mapIdx = d[idx];
+        this.mapIdx = mapIdx;
+        this.map = ss.MAPS[mapIdx].filename;
+        console.log("found map: " + mapIdx + " (" + this.map + ")");
+      }
+    }
+
+    getLengthString(){
+      const highestTime = this.getTimeLength();
+      return getTimeString(highestTime);
+    }
+
+    getTimeLength(){
+      if(!this.lastPacketCache) this.lastPacketCache = this.streamer.getPacket(this.streamer.length-1);
+      return this.lastPacketCache.time;
+    }
+  }
+
+  class PacketStreamer {
+    constructor() {
+      this.length = 0;
+      this.chunkSize = 1000;
+      this.chunks = [];
+      this.loadedChunk = 0; //index
+      this.packetStream = [];
+    }
+
+    addPacket(packet) {
+      this.setPacket(this.length, packet);
+      this.length++;
+    }
+
+    setPacket(idx, packet) {
+      this.loadOnDemand(idx);
+      this.packetStream[idx % this.chunkSize] = packet;
+    }
+
+    getPacket(idx) {
+      this.loadOnDemand(idx);
+      return this.packetStream[idx % this.chunkSize];
+    }
+
+    loadOnDemand(packetIdx) {
+      const location = Math.floor(packetIdx / this.chunkSize) || 0;
+      //console.log(location);
+      if (location != this.loadedChunk) {
+        this.releaseCurrent();
+        this.loadChunk(location);
+      }
+    }
+
+    releaseCurrent() {
+      console.log("released " + this.loadedChunk);
+      this.chunks[this.loadedChunk] = MemoryTool.compressToByteArray(
+        this.packetStream,
+      );
+    }
+
+    loadChunk(chunkIdx) {
+      console.log("load " + chunkIdx);
+      if (chunkIdx < this.chunks.length) {
+        this.packetStream = MemoryTool.decompressToPacket(
+          this.chunks[chunkIdx],
+        );
+      } else {
+        console.log(
+          "chunk idx empty. Clearing arr. (" +
+            chunkIdx +
+            "/" +
+            this.chunks.length +
+            ")",
+        );
+        this.packetStream = [];
+      }
+      this.loadedChunk = chunkIdx;
+    }
+
+    loadAll(){
+      const packets = [];
+      for(let i = 0; i<this.length; i++){
+        packets[i] = this.getPacket(i);
+      }
+      return packets;
+    }
+
+    loadAllCompressed(){
+      return MemoryTool.compressToByteArray(this.loadAll());
+    }
+  }
+
+  class MemoryTool {
+    static decompressToPacket(arr) {
+      //console.log("arr: " + arr);
+      const dec = this.decompress(arr);
+      //console.log(dec);
+      return this.arrayToPackets(dec.buffer);
+    }
+
+    static decompress(arr) {
+      return pako.inflate(arr);
+    }
+
+    static arrayToPackets(arr) {
+      const v = new DataView(arr);
+      let offs = 0;
+      const numPacks = v.getUint32(offs);
+      offs += 4;
+      const newPacks = [];
+      for (let i = 0; i < numPacks; i++) {
+        const type = v.getUint8(offs);
+        offs++;
+        const rTR = v.getUint32(offs);
+        offs += 4;
+        const dLen = v.getUint16(offs);
+        offs += 2;
+        const arr = new Uint8Array(dLen);
+        for (let j = 0; j < dLen; j++) {
+          arr[j] = v.getUint8(offs);
+          offs++;
+        }
+        const pack = new Packet3({ data: arr }, rTR, type);
+        newPacks.push(pack);
+      }
+      return newPacks;
+    }
+
+    static compressToByteArray(packets) {
+      return this.compress(this.packetsToByteArray(packets));
+    }
+
+    /**
+     * writes the given Packet3 array into an Uint8 array.
+     * @argument packets : Packet3[] the array of packets
+     */
+    static packetsToByteArray(packets) {
+      const buffer = new ArrayBuffer(this.calcByteArrayLength(packets));
+      const v = new DataView(buffer);
+      let offs = 0;
+      /*
+        num of packets: Uint32 (4 bytes)
+          [packetarray elem]
+            type: Uint8 (1 byte)
+            rel time received: Uint32 (4 bytes)
+            data length: Uint16 (2 bytes)
+            [data]: Uint8s (x bytes)
+        */
+      v.setUint32(offs, packets.length);
+      offs += 4;
+      packets.forEach((pack) => {
+        v.setUint8(offs, pack.type);
+        offs++;
+        v.setUint32(offs, pack.time);
+        offs += 4;
+        v.setUint16(offs, pack.getDataAsByteArray().length);
+        offs += 2;
+        pack.getDataAsByteArray().forEach((byTe) => {
+          v.setUint8(offs, byTe);
+          offs++;
+        });
+      });
+
+      return new Uint8Array(buffer);
+    }
+
+    static calcByteArrayLength(packets) {
+      //in bytes
+      let num = 4; //num oacks
+      for (let i = 0; i < packets.length; i++) {
+        num++; //type
+        num += 4; //time received
+        num += 2; //data length
+        num += packets[i].getDataAsByteArray().length; //data slots
+      }
+
+      return num;
+    }
+
+    static compress(arr) {
+      return pako.deflate(arr);
+    }
+  }
+
+  //let rePlaytemp = new RePlay(); //TODO: make this not be here
+  function removeAllPlayers(){
+    //console.log(ss.PLAYERS);
+    ss.PLAYERS.forEach((play)=>{
+      //console.log(ss[H.removePlayer]);
+      //console.log(ss.removePlayer);
+      if(!play) return;
+      ss.removePlayer(play);
+    });
+  }
+  unsafeWindow.remAllP = removeAllPlayers;
+
+  class RePlayer {
+    static insertReplay(replay) {
+      this.activeReplay = replay;
+      this.iReplayPacketIdx = 0;
+      this.iReplayRelativeTime = 0;
+      this.bIsPaused = true;
+      this.bSkipDesired = false;
+      this.iSkipAmount = 0;
+      unsafeWindow.rePlayMapIdxOverride = findMapIdx(replay.map);
+    }
+
+    static pause(){
+      this.bIsPaused = true;
+    }
+
+    static skip(amount){
+      console.log("skip desired for " + amount);
+      this.iSkipAmount = amount;
+      this.bSkipDesired = true;
+    }
+
+    static goToPacket(packetIdx){
+      this.iReplayRelativeTime = 0;
+      this.iReplayPacketIdx = packetIdx;
+    }
+    static jumpToStart(){
+      let pType = -1;
+      let i = 0;
+      while(pType != C.addPlayer){
+        const pack = this.activeReplay.streamer.getPacket(++i);
+        console.log(pack);
+        console.log(C.addPlayer);
+        pType= pack.peekByte();
+      }
+      removeAllPlayers();
+      this.goToPacket(i);
+    }
+
+    static async resume() {
+      this.bIsPaused = false;
+      bReplaying = true;
+      setReplayUIVis(true);
+      while (
+        this.activeReplay &&
+        this.iReplayPacketIdx < this.activeReplay.streamer.length &&
+        bReplaying &&
+        !this.bIsPaused
+      ) {
+        const packet = //packets.shift(); //grab first packet);
+          this.activeReplay.streamer.getPacket(this.iReplayPacketIdx++);
+        const delayDur = packet.time - this.iReplayRelativeTime;
+        if(delayDur < 0){
+          this.rePlayPacket(packet);
+          continue;
+        }
+        if (delayDur > 0) await sleep(delayDur);
+
+        this.rePlayPacket(packet);
+
+        this.iReplayRelativeTime = packet.time; //set relative time location to match packet.
+        //update ui progress
+        setUIProgress(this.iReplayRelativeTime, this.activeReplay.getTimeLength(), this.iReplayPacketIdx, this.activeReplay.streamer.length);
+
+        if(this.bSkipDesired){
+          this.bSkipDesired = false;
+          this.iReplayRelativeTime+=this.iSkipAmount;
+          if(this.iSkipAmount<0)
+          {
+            RePlayer.jumpToPacket(Math.max(25, this.findPacketIdxForTime(this.iReplayRelativeTime))); //hack, but maybe don't load in again...
+          }
+        }
+      }
+    }
+    static jumpToPacket(packetIdx){
+        this.iReplayPacketIdx = packetIdx;
+        this.iReplayRelativeTime = this.activeReplay.streamer.getPacket(this.iReplayPacketIdx);
+    }
+
+    static rePlayPacket(packet){
+      if (
+        packet.data &&
+        packet.peekByte() != C.syncMe &&
+        packet.peekByte() != C.hitMe &&
+        packet.peekByte() != C.socketReady //&&
+        //!bannedCommCodes.includes(packet.peekByte())
+      ) {
+        if(packet.peekByte()==C.clientReady){
+          console.log("ClientReady extern, isReady: " + isClientReady);
+          if(isClientReady) return;
+          isClientReady = true;
+        }
+        //I want to kill myself :(
+        //yes I know that that check up there ^^^^^^^^^^^^ doesn't account for any packet after the first one, but eh...
+        try{
+        switch (packet.type) {
+          case 1:
+            //console.log("on1");
+            ss.onMessage(packet.data);
+            break;
+          case 2:
+            //console.log("on2");
+            ss.onMessage2(packet.data);
+            break;
+          case 3: //myplayer packet.
+            playBackMyPlayerPacket(packet.getDataAsByteArray());
+            break;
+        }
+      }catch(e){
+          console.warn("playback errored. " + e);
+          console.error(e);
+          console.log("this is error should not be the end of the world. Report to creator if playback breaks!");
+        }
+      } else if(packet.data && packet.peekByte() == C.socketReady){
+        isClientReady = false;
+      }
+    }
+
+    static findPacketIdxForTime(time){
+      const streamer = this.activeReplay.streamer;
+      let num = streamer.getPacket(this.iReplayPacketIdx).time;
+      let idx = this.iReplayPacketIdx;
+      if(num>time){
+        while(num>time){
+          num = streamer.getPacket(--idx).time;
+        }
+      } else{
+        while(num<time){
+          num = streamer.getPacket(++idx).time;
+        }
+      }
+      return idx;
+    }
+  }
+
+  class FileManager {
+    static SAVE_VERSION = 4;
+
+    static createFileBytes(replay) {
+      replay.streamer.releaseCurrent();
+      const bodyComp = replay.streamer.loadAllCompressed();
+
+      const content2 = new ArrayBuffer(this.getHeadLength(replay) + bodyComp.length);
+      const v = new DataView(content2);
+      let offs = 0;
+      v.setUint8(offs, this.SAVE_VERSION); //save ver
+      //test
+      //v.setUint8(offs, 55);
+      offs++;
+      v.setBigUint64(offs, BigInt(replay.recordStartTime)); //record start time
+      offs += 8;
+      //new in 3: map name
+      let x = this.writeString(v, replay.map, offs);
+      offs=x;
+      //new in 4: real cc
+      offs=this.writeString(v, JSON.stringify(replay.realCC), offs);
+      //write body
+      //there has to be a better way to do this but cba
+      for (let i = 0; i < bodyComp.length; i++) {
+        v.setUint8(offs+i, bodyComp[i]) //= bodyComp[i];
+      }
+      //console.log(content2);
+      return content2;
+    }
+
+    //returns offset of string write
+    static writeString(v, string, offs){
+      //let offs = 0;
+      v.setUint16(offs, string.length);
+      offs+=2;
+      for(let i = 0; i<string.length; ++i){
+        v.setUint8(offs, string.charCodeAt(i));
+        offs++;
+      }
+      return offs;
+    }
+
+    static readString(v, offs){
+      let len = v.getUint16(offs);
+      console.log("str len: " + len);
+      let parsedString = "";
+      offs+=2;
+      for(let i = 0; i<len; ++i){
+        parsedString+= String.fromCharCode(v.getUint8(offs));
+        offs++;
+      }
+      console.log("readString(), " + parsedString);
+      return {parsedString, offs};
+    }
+
+    static download(replay){
+      this.downloadBlob(this.createFileBytes(replay), 'replay.SRPLY', 'application/octet-stream');
+    }
+
+    static downloadBlob(data, fileName, mimeType) {
+      const blob = new Blob([data], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    //in bytes
+    static getHeadLength(replay) {
+      let val = 1; //version
+      val += 8; //replayStartTime: biguint64
+      val+=2; //map string len
+      val+=replay.map.length; //map string char bytes
+      val+=2; //realCC string len
+      val+=realCCString.length; //realCC string char bytes
+      return val;
+    }
+
+    static initUploadElem(){
+      this.inputElem = document.createElement('input');
+      this.inputElem.type = 'file';
+      this.inputElem.style.display = 'block';
+      this.inputElem.accept = ".srply,.bin";
+      document.body.appendChild(this.inputElem);
+      this.inputElem.addEventListener('change', this.handleFileUpload, false);
+      this.bIsInit = true;
+    }
+
+    static handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) {
+        console.error("no file");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const load = createUploadLoadingScreen();
+          const arrayBuffer = e.target.result;
+          //console.log(arrayBuffer);
+          replays.push(FileManager.computeSaveFile(arrayBuffer));
+          //window.replayer.activeReplay = rePlaytemp;
+          //window.rply = rePlaytemp;
+          rebuildReplayPopupList();
+          load.parnet.removeChild(load.pop);
+      };
+
+      reader.readAsArrayBuffer(file);
+  }
+
+    static triggerFileUpload() {
+      if(!this.bIsInit) this.initUploadElem();
+      this.inputElem.click();
+    }
+
+    static  computeSaveFile(data){
+      try{
+      //assuming data is a bytebuffer
+      const v = new DataView(data);
+      let offs = 0;
+      while(v.getInt8(offs)==0){
+        ++offs; //I hate this
+      }
+      const ver = v.getUint8(offs);
+      offs++;
+      if(ver!=this.SAVE_VERSION){
+        console.warn("SRPLY: WARNING: the loaded save version number is different than the FM's ver. Stuff might not load correctly! (f: " + ver +", FM: " + this.SAVE_VERSION+")");
+      }
+      let parsedReplay = new RePlay();
+      parsedReplay.saveVersion = ver;
+      parsedReplay.recordStartTime = Number(v.getBigUint64(offs));
+      offs+=8;
+      //map
+      if(ver >=3){
+        let res = this.readString(v, offs);
+        offs = res.offs;
+        parsedReplay.map = res.parsedString;
+        parsedReplay.mapIdx = findMapIdx(res.parsedString);
+        console.log("found map " + parsedReplay.map + " with idx " + parsedReplay.mapIdx);
+      }
+      //realCC
+      if(ver>=4){
+        let res = this.readString(v, offs);
+        offs = res.offs;
+        parsedReplay.realCC = JSON.parse(res.parsedString);
+        console.log("replay shipped with real cc: " + parsedReplay.realCC);
+      }
+      //done with head. from now on, it will only be the packets.
+      const packDatArray = new Uint8Array(v.byteLength-offs);
+      for(let i = 0; i<packDatArray.length; i++){
+        packDatArray[i] = v.getUint8(i+offs);
+      }
+      const allPacks = MemoryTool.decompressToPacket(packDatArray);
+      for(let i = 0;i<allPacks.length; i++){
+        parsedReplay.streamer.addPacket(allPacks[i]);
+      }
+      return parsedReplay;
+
+    }catch(e){
+      console.error("error in file parsing. " + e);
+      console.error(e);
+    }
+
+  }
+
+  }
+
+  document.addEventListener("keydown", function (event) {
+    //console.log(event.key);
+    const key = event.key.toLowerCase();
+    if(key=="p"){
+      if(bReplaying && RePlayer){
+        if(RePlayer.bIsPaused){
+          RePlayer.resume();
+        } else{
+          RePlayer.pause();
+        }
+      }
+    }
+    if(key=="arrowright"){
+      if(bReplaying && RePlayer){
+        RePlayer.skip(5000);
+      }
+    }
+    if(key=="arrowleft"){
+      if(bReplaying && RePlayer){
+        RePlayer.skip(-5000);
+      }
+    }
+});
+
+  //https://stackoverflow.com/questions/951021/what-is-the-javascript-version-of-sleep
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  //-----------------------------------------------------------------------------------------------------------------------------------------
+  unsafeWindow.bReplaying = false;
+  unsafeWindow.replayer = RePlayer;
+  unsafeWindow.save = FileManager;
+  //unsafeWindow.rply = rePlaytemp;
+  unsafeWindow.rplys = replays;
+  unsafeWindow.createGUI = createGUI;
+  unsafeWindow.record = ReCorder;
+  unsafeWindow.setReplayUIVis = setReplayUIVis;
+  unsafeWindow.rePlayMapIdxOverride = -1;
+
+  setInterval(()=>
+  unsafeWindow.extra = {
+    C,CN,H
+  },1000);
+  //------------------------------------------------------------------------------------------------------------------------------------------
+
+  //GUI
+  function createGUI(){
+    const w = "calc(calc(var(--ss-space-lg)* 3)*0.70)";
+    //preload images
+    piperImage = document.createElement("img");
+    piperImage.src = "https://github.com/TheRealSeq/Media/blob/main/IffermoonPiperBattle.png?raw=true";
+    piperImage.style.width = w;
+    piperImage.style.height = w;
+
+
+    deleteImage = document.createElement("img");
+    deleteImage.src = "https://github.com/TheRealSeq/Media/blob/main/SRPLY/delMiniIconII.png?raw=true";
+    deleteImage.style.width = w;
+    deleteImage.style.height = w;
+
+
+    downloadImage = document.createElement("img");
+    downloadImage.src = "https://github.com/TheRealSeq/Media/blob/main/SRPLY/downMiniIcon.png?raw=true";
+    downloadImage.style.width = w;
+    downloadImage.style.height = w;
+
+
+    playImage = document.createElement("img");
+    playImage.src = "https://github.com/TheRealSeq/Media/blob/main/SRPLY/playMiniIcon.png?raw=true";
+    playImage.style.width = w;
+    playImage.style.height = w;
+
+
+    retargetImage = document.createElement("img");
+    retargetImage.src = "https://github.com/TheRealSeq/Media/blob/main/SRPLY/retarget.png?raw=true";
+    retargetImage.style.width = w;
+    retargetImage.style.height = w;
+
+
+    //IK I should probably append to a child but eh doesn't matter, does it?
+    const homeScreen = document.getElementById("home_screen");
+    { //button
+    const replayButton = document.createElement("button");
+    replayButton.className = "ss_button btn_blue bevel_blue btn_sm pause-screen-btn-spectate";
+    replayButton.title = "Replays";
+     {
+    //button eye image
+    const buttonImage = document.createElement("i");
+    buttonImage.className = "fas fa-eye fa-2x";
+    replayButton.appendChild(buttonImage);
+     }
+    //position button
+    const rplyButtonStyle = {
+      position: "absolute",
+      bottom: "var(--ss-space-lg);",
+      right: "var(--ss-space-lg);",
+      'box-shadow': "var(--ss-btn-dark-shadow), var(--ss-btn-dark-bevel) #086e8d, var(--ss-btn-light-bevel) #00ade6 !important"
+    }
+    replayButton.style = rplyButtonStyle;
+
+    replayButton.onclick = createReplayPopup;
+
+    homeScreen.appendChild(replayButton);
+    }
+    createIngameUI();
+  }
+
+  function createReplayPopup(){
+    if(document.getElementById("MOD_REPLAY_LISTPOPUP")) return;
+    ReCorder.releaseReplay();
+    ReCorder.currentReplay = false;
+
+    const homeScreen = document.getElementById("home_screen");
+    //create base popup container
+    const popup = document.createElement("div");
+    popup.id= "MOD_REPLAY_LISTPOPUP";
+    popup.className = "popup_window popup_lg centered roundme_md";
+    {//close button
+      const popupClose = document.createElement("button");
+      popupClose.className = "popup_close clickme roundme_sm";
+      //button image
+      const buttonImage = document.createElement("i");
+      buttonImage.className = "fas fa-times text_white fa-2x";
+      popupClose.appendChild(buttonImage);
+
+      popupClose.onclick = function(){
+        //onclick func
+        homeScreen.removeChild(popup);
+      }
+
+      popup.appendChild(popupClose);
+    }{//title
+      const titleText = document.createElement("h1");
+      titleText.className = "roundme_sm text-center";
+      titleText.textContent = "Replays";
+      popup.appendChild(titleText);
+    }
+    if(replays.length>0){
+    //scroll bg
+    const bg = document.createElement("div");
+    bg.className = "media-tabs-content f_col";
+    popup.appendChild(bg);
+    //scroll
+    const scroll = document.createElement("div");
+    scroll.className = "f_row v_scroll border-blue5 roundme_sm common-box-shadow";
+    scroll.id = "MOD_REPLAY_LISTSCROLL";
+    bg.appendChild(scroll);
+
+    scroll.appendChild(createListSection());
+
+    const warnElem = document.createElement("p");
+    warnElem.textContent = "WARNING! Every replay is lost after page exit, unless downloaded as a file!";
+    popup.appendChild(warnElem);
+    } else{
+      const warnElem = document.createElement("p");
+      warnElem.textContent = "no replays avialable! Join a game to record it, or upload your replay file via the button in the menu!";
+      warnElem.id = "MOD_REPLAY_WARNELEM_NOREPLAY";
+      popup.appendChild(warnElem);
+    }
+
+    //upload button
+    const uploadButton = document.createElement("button");
+    uploadButton.textContent = "upload replay...";
+    uploadButton.title = "upload replay";
+    uploadButton.onclick = function(){
+      FileManager.triggerFileUpload();
+    };
+    popup.appendChild(uploadButton);
+
+    homeScreen.appendChild(popup);
+
+  }
+
+  function createListSection(){
+    //idk if this is neccesary
+    const section = document.createElement("section");
+    section.className = "media-panel news-panel";
+    section.id = "MOD_REPLAY_LISTSECTION";
+    //const testElem = document.createElement("h1");
+    //testElem.textContent = "test very wide string content WOWOOWOWSSSS SSSSSSS SSSSSSSSSSSSSSS SSSSS SSSSSSSSSSS SSSSS SSSSSSSSS SSS this wis wrapping";
+    //section.appendChild(testElem);
+
+    //section.appendChild(createReplayChild());
+    //section.appendChild(createReplayChild());
+    replays.forEach(r => {
+      section.appendChild(createReplayChild(r));
+    });
+
+    return section;
+  }
+
+  /**
+   * will do nothing if no popup, but also not error :D
+   */
+  function rebuildReplayPopupList(){
+    if(replays.length ===0){
+      closeReplayPop(); createReplayPopup();
+      return;
+    }
+    const scroll = document.getElementById("MOD_REPLAY_LISTSCROLL");
+    const sec = document.getElementById("MOD_REPLAY_LISTSECTION");
+    const warn = document.getElementById("MOD_REPLAY_WARNELEM_NOREPLAY");
+    if(warn){closeReplayPop(); createReplayPopup()} //this is kinda a hack (?) but rewriting that entire part would be worse!
+    if(!scroll) return;
+    if(sec) scroll.removeChild(sec);
+    scroll.appendChild(createListSection());
+  }
+
+  function closeReplayPop(){
+    const home = document.getElementById("home_screen");
+    const pop =document.getElementById("MOD_REPLAY_LISTPOPUP");
+    home.removeChild(pop);
+  }
+
+  function createReplayChild(replay){
+    const mainDiv = document.createElement("div");
+    mainDiv.className= "player-challenges-container overflow-hidden";
+
+    mainDiv.style["border-bottom"]= "var(--ss-common-border-width) solid var(--ss-blue3)";
+
+    const splitDiv = document.createElement("div");
+    splitDiv.className = "display-grid grid-auto-flow-column justify-content-around gap-sm";
+    splitDiv.style.marginLeft = "10px";
+    splitDiv.style.marginRight = "10px";
+
+
+    const textDiv = document.createElement("div");
+
+    //create header
+    {
+    const header = document.createElement("h4");
+    header.textContent= "Unknown replay";
+    header.style.color="#0C576F"; //have to hardcode bc not in class. Too bad!
+    header.style.lineHeight = "0em";//align to top
+    header.style.margin = ".6em";//prob not the way to do this but eh
+    header.style.fontSize = "1.3em"
+    mainDiv.appendChild(header);
+
+      const metadataString = replay.streamer.length + " packets"
+      + " | " + timeConverter(replay.recordStartTime)
+      + " | " + replay.getLengthString()
+      + " | " + "sv " + replay.saveVersion;
+
+      const l1Text ="duration: "+replay.getLengthString() +", " + truncateNum(replay.streamer.length) +" packets";
+      const l2Text = "map: " + (ss.MAPS[findMapIdx(replay.map)] ? ss.MAPS[findMapIdx(replay.map)].name : "unknown (FN: " + replay.map + ")");
+      const l3Text ="recorded at: "+timeConverter(replay.recordStartTime) +", sv " + replay.saveVersion;
+
+
+
+    const bottomText = document.createElement("p");
+    bottomText.textContent = metadataString;
+    bottomText.style.fontSize= ".7em;";
+    textDiv.innerHTML = `
+      ${l1Text} <br> ${l2Text} <br>  ${l3Text}
+    `;
+    //textDiv.appendChild(bottomText);
+    /*
+    const l1 = document.createElement("p");
+    l1.textContent = l1Text;
+    l1.style.margin = "10px"
+    textDiv.appendChild(l1);
+
+    const l2 = document.createElement("p");
+    l2.textContent = l2Text;
+    l2.style.margin = "10px"
+    textDiv.appendChild(l2);
+    */
+    }
+
+
+
+    //TODO: ADD BUTTÓNS
+
+    //delete
+    const deleteButton = document.createElement("button");
+    deleteButton.className = "ss_button btn_red bevel_red box_relative pause-screen-ui btn-account-w-icon text-shadow-none text_blue1";
+    deleteButton.style.top = "50%";
+    deleteButton.style.transform = "translateY(-50%)";
+    deleteButton.style.height = "calc(var(--ss-space-lg)* 3)";
+    deleteButton.style.width = "calc(var(--ss-space-lg)* 3)";
+    deleteButton.title = "delete replay";
+    deleteButton.onclick = function(){
+      replays.splice(replays.indexOf(replay), 1);
+      rebuildReplayPopupList();
+    };
+    deleteButton.appendChild(deleteImage.cloneNode());
+
+    //download
+    const downloadButton = document.createElement("button");
+    downloadButton.className = "ss_button btn_blue bevel_blue box_relative pause-screen-ui btn-account-w-icon text-shadow-none text_blue1";
+    downloadButton.style.top = "50%";
+    downloadButton.style.transform = "translateY(-50%)";
+    downloadButton.style.height = "calc(var(--ss-space-lg)* 3)";
+    downloadButton.style.width = "calc(var(--ss-space-lg)* 3)";
+    downloadButton.title = "download replay";
+    downloadButton.onclick = function(){
+      FileManager.download(replay);
+    };
+    downloadButton.appendChild(downloadImage.cloneNode());
+
+     //download
+    const playButton = document.createElement("button");
+    playButton.className = "ss_button btn_green bevel_green box_relative pause-screen-ui btn-account-w-icon text-shadow-none text_blue1";
+    playButton.style.top = "50%";
+    playButton.style.transform = "translateY(-50%)";
+    playButton.style.height = "calc(var(--ss-space-lg)* 3)";
+    playButton.style.width = "calc(var(--ss-space-lg)* 3)";
+    playButton.title = "play replay";
+    playButton.onclick = function(){
+      RePlayer.insertReplay(replay);
+      RePlayer.resume();
+      closeReplayPop();
+    };
+    if(Math.random()<0.05){playButton.appendChild(piperImage.cloneNode()); }else{ playButton.appendChild(playImage.cloneNode());}
+
+    //download
+    const retargetButton = document.createElement("button");
+    retargetButton.className = "ss_button btn_yolk bevel_yolk box_relative pause-screen-ui btn-account-w-icon text-shadow-none text_blue1";
+    retargetButton.style.top = "50%";
+    retargetButton.style.transform = "translateY(-50%)";
+    retargetButton.style.height = "calc(var(--ss-space-lg)* 3)";
+    retargetButton.style.width = "calc(var(--ss-space-lg)* 3)";
+    retargetButton.title = "retarget replay";
+    retargetButton.onclick = function(){
+      //TODO
+      createSexSexFUCKRetargetPopup(replay);
+    };
+    retargetButton.appendChild(retargetImage.cloneNode());
+
+
+    const testElem = document.createElement("h1");
+    testElem.textContent = "test very wide string content WOWOOWOWSSSS SSSSSSS SSSSSSSSSSSSSSS SSSSS SSSSSSSSSSS SSSSS SSSSSSSSS SSS this wis wrapping";
+    //mainDiv.appendChild(testElem);
+
+    splitDiv.appendChild(playButton);
+    splitDiv.appendChild(textDiv);
+
+    splitDiv.appendChild(downloadButton);
+    splitDiv.appendChild(retargetButton);
+    splitDiv.appendChild(deleteButton);
+
+
+
+    mainDiv.appendChild(splitDiv);
+
+    return mainDiv;
+  }
+
+  function createSexSexFUCKRetargetPopup(replay){
+    const homeScreen = document.getElementById("home_screen");
+    //create base popup container
+    const popup = document.createElement("div");
+    popup.id= "MOD_REPLAY_RETARGET_POP";
+    popup.className = "popup_window popup_lg centered roundme_md";
+    {//close button
+      const popupClose = document.createElement("button");
+      popupClose.className = "popup_close clickme roundme_sm";
+      //button image
+      const buttonImage = document.createElement("i");
+      buttonImage.className = "fas fa-times text_white fa-2x";
+      popupClose.appendChild(buttonImage);
+
+      popupClose.onclick = function(){
+        //onclick func
+        homeScreen.removeChild(popup);
+      }
+
+      popup.appendChild(popupClose);
+    }{//title
+      const titleText = document.createElement("h1");
+      titleText.className = "roundme_sm text-center";
+      titleText.textContent = "Retarget replay";
+      popup.appendChild(titleText);
+    }
+    //combo box
+    const picker = document.createElement("select");
+    {
+      picker.className= "ss_select ss_marginright_sm ss_select";
+      if(replay.map && !replay.map.includes("KILL_PICKER_REMOVED_PREVIOUS")){
+        const op = document.createElement("option");
+        op.value = "KILL_PICKER_REMOVED_PREVIOUS:" + replay.map;
+        op.innerHTML = "[trust packet idx]";
+        picker.appendChild(op);
+      } else{
+        const op = document.createElement("option");
+        op.value = "cureDeletion";
+        op.innerHTML = "[undo manual deletion]";
+        picker.appendChild(op);
+      }
+      ss.MAPS.forEach((m)=>{
+        const op = document.createElement("option");
+        op.value = m.filename;
+        op.innerHTML = m.name;
+        picker.appendChild(op);
+      });
+      popup.appendChild(picker);
+    }
+    //confirmatoin
+    {
+      const confirm = document.createElement("button");
+      confirm.title = "confirm retarget";
+      confirm.textContent = "confirm";
+      confirm.className = "ss_button btn_green bevel_green btn_md no_margin_bottom";
+      popup.appendChild(confirm);
+      confirm.onclick = ()=>{
+        if(picker.value == "cureDeletion"){
+          replay.map = replay.map.split(":")[1];
+        } else{
+          replay.map = picker.value;
+        }
+        rebuildReplayPopupList();
+        homeScreen.removeChild(popup);
+      };
+    }
+    homeScreen.appendChild(popup);
+  }
+
+  function createUploadLoadingScreen(){
+    const mainDiv = document.createElement("div");
+    mainDiv.id ="MOD_REPLAY_UPLOAD_LOADSCREEN";
+    mainDiv.className = "popup_window popup_lg centered roundme_md";
+    const header = document.createElement("h1");
+    header.textContent = "uploading...";
+    const l1 = document.createElement("p");
+    l1.textContent = "parsing replay";
+    const l2 = document.createElement("p");
+    l2.textContent = "please wait.";
+    mainDiv.appendChild(header);
+    mainDiv.appendChild(l1);
+    mainDiv.appendChild(l2);
+    const app = document.getElementById("app");
+    app.appendChild(mainDiv);
+    return {pop: mainDiv, parnet: app};
+  }
+
+  function createIngameUI(){
+    const app = //document.getElementById("account_panel");
+    document.getElementsByClassName("paused-game-ui z-index-1 centered_x fullwidth")[0];
+    const rePlayIngameContainer = document.createElement("div");
+    {//progress
+      const progressContainer = document.createElement("div");
+      progressContainer.style.position = "flex";
+      progressContainer.style.bottom = "var(--ss-space-lg)";
+      progressContainer.className = "centered_x";
+      progressContainer.id = "MOD_REPLAY_UI_CONTAINER";
+      progressContainer.style.display = "none";
+      //const progressText = document.createTextNode("xx/yy");
+      //const progressText = document.createElement("h5");
+      const timeContainer = document.createElement("span");
+      timeContainer.style.color = "#ffffff";
+      //timeContainer.className = "centered_x";
+      timeContainer.style.textAlign = "center";
+      timeProgressText = document.createTextNode("xx/yy");
+      timeProgressText.id = "MOD_REPLAY_PROGRESSTEXT";
+      const bar = document.createElement("progress");
+      bar.className = "centered_x";
+      bar.id = "MOD_REPLAY_PROGRESS";
+      bar.style.bottom = "var(--ss-space-lg)";
+
+      timeContainer.appendChild(timeProgressText);
+      progressContainer.appendChild(timeContainer);
+      progressContainer.appendChild(bar);
+      rePlayIngameContainer.appendChild(progressContainer);
+    }
+
+
+    app.appendChild(rePlayIngameContainer);
+  }
+
+  function setUIProgress(current, max, pIdx, maxPIdx){
+    const progress = document.getElementById("MOD_REPLAY_PROGRESS");
+    //const text = document.getElementById("MOD_REPLAY_PROGRESSTEXT");
+    progress.max = max;
+    progress.value = current;
+    //text.nodeValue = current + "/" + max;
+    //text.textContent = current + "/" + max;
+    let newString = getTimeString(current) + "/" + getTimeString(max);
+    if(pIdx && maxPIdx) newString+= " (packets: " + truncateNum(pIdx) + "/" + truncateNum(maxPIdx) + ")";
+    timeProgressText.nodeValue =// getTimeString(current) + "/" + getTimeString(max)// + " (" + ;
+    newString;
+  }
+
+  function setReplayUIVis(visible){
+    const container = document.getElementById("MOD_REPLAY_UI_CONTAINER");
+    container.style.display = visible ? "block" : "none";
+    //assuming we can hide the game UI elements here too
+  }
+
+  //--DO NOT USE- BROKEN--
+  function showMessageDialog(title, text){
+    const html = `<div class="popup_window popup_sm roundme_md centered" id="genericPopup" style=""><div><button class="roundme_sm popup_close clickme"><i class="fas fa-times text_white fa-2x"></i></button> <h3 id="popup_title" class="roundme_sm shadow_blue4 nospace text_white">${title}</h3></div> <div class="popup_sm_content">${text}</div> <div id="btn_horizontal" class="f_center"><button class="ss_button btn_red bevel_red width_sm" style="display: none;"></button> <button class="ss_button btn_green bevel_green width_sm">OK</button></div> </div>`;
+    document.getElementById("app").innerHTML+=html;
+  }
+
+
+//https://stackoverflow.com/questions/847185/convert-a-unix-timestamp-to-time-in-javascript (modified)
+function timeConverter(UNIX_timestamp){
+  var a = new Date(UNIX_timestamp);
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var year = a.getFullYear();
+  var month = months[a.getMonth()];
+  var date = a.getDate();
+  var hour = a.getHours();
+  var min = a.getMinutes();
+  var sec = a.getSeconds();
+  var time = date + ' ' + month + ' ' + year + ' ' + hour + ':' + min + ':' + sec ;
+  return time;
+}
+
+//this returns a string!
+function truncateNum(num){
+  if(num>=1000&&num<1000000)return (Math.round(num*0.01)*0.1).toFixed(1)+"k";
+  if(num>=1000000)return (Math.round(num*0.00001)*0.1).toFixed(1);+"m";
+  return num;
+}
+
+function getTimeString(millis){
+  let minutes = millis/1000/60;
+  minutes = Math.floor(minutes);
+  let t =millis-(minutes*1000*60);
+  let seconds = t/1000;
+  seconds = Math.floor(seconds);
+  const msFraction = millis%1000;
+  //if(minutes<1) return seconds+"s";
+  return `${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}.${String(msFraction).padStart(3,'0')}`;
+}
+
+//https://stackoverflow.com/questions/9907419/how-to-get-a-key-in-a-javascript-object-by-its-value
+function getKeyByValue(object, value) {
+  return Object.keys(object).find(key => object[key] === value);
+}
+})();
